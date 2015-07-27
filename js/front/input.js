@@ -1,7 +1,6 @@
 var chrono = require('./chrono')
 var scroll = require('scroll')
-var stat = require('./stat')
-var chart = require('./chart')
+var data = require('./data')
 var precision = require('./precision')
 module.exports = { keydown: keydown }
 
@@ -43,7 +42,7 @@ function clic (device) {
 	};	
 	document.getElementById("cellToGet").innerHTML = 
 		(endArrayCells && deviceTested%2==1)? "Appuyer sur zéro" : ARRAYCELLS[currentCellToGet];
-	if (endArrayCells && deviceTested%2==0) { loadPopUp("THIS SESSION") }
+	if (endArrayCells && deviceTested%2==0) { data.loadPopUp("THIS SESSION") }
 
 	//CHRONO
 	chrono.chronoReset();
@@ -72,13 +71,16 @@ function keydown(evt) {
         	clic("FLECHES");
             break;
         case 65: //a
-			loadPopUp ("ALL")
+			data.loadPopUp("ALL")
             break;
     }
 }
 
 window.onclick = function () { clic("TRACKPAD"); }
 
+// —————————————————————————————————————————————————————————————————————————————
+// FONCTIONS ANNEXES
+// —————————————————————————————————————————————————————————————————————————————
 isScrolling = false
 function animateScroll (d) {
 	if (isScrolling){ return; }
@@ -95,57 +97,6 @@ function animateScroll (d) {
 	})
 }
 
-// —————————————————————————————————————————————————————————————————————————————
-// FONCTIONS ANNEXES
-// —————————————————————————————————————————————————————————————————————————————
-function loadPopUp (from) {
-	var dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize
-	if (from == "ALL") {
-		var i = 0
-		stat.allData("TRACKPAD", "distance", function (data) {
-			dataTrackpadByDistance = data
-			i++
-			if (i==4) { computeArrayData(dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize) }
-		})
-		stat.allData("FLECHES", "distance", function (data) {
-			dataFlechesByDistance = data
-			i++
-			if (i==4) { computeArrayData(dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize) }
-		})
-		stat.allData("TRACKPAD", "taille", function (data) {
-			dataTrackpadBySize = data
-			i++
-			if (i==4) { computeArrayData(dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize) }
-		})
-		stat.allData("FLECHES", "taille", function (data) {
-			dataFlechesBySize = data
-			i++
-			if (i==4) { computeArrayData(dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize) }
-		})
-	}
-	if (from == "THIS SESSION") {
-		dataTrackpadByDistance = dataResults.TRACKPAD
-		dataFlechesByDistance = dataResults.FLECHES
-		dataTrackpadBySize = dataResults.TRACKPAD
-		dataFlechesBySize = dataResults.FLECHES
-		computeArrayData(dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize)
-	}
-}
-
-function computeArrayData (data1, data2, data3, data4) {
-	var dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize
-	
-	dataTrackpadByDistance = stat.sort(data1, "distance")
-	dataFlechesByDistance = stat.sort(data2, "distance")
-	dataTrackpadBySize = stat.sort(data3, "taille")
-	dataFlechesBySize = stat.sort(data4, "taille")
-	dataTrackpadByDistance = stat.meanArray(dataTrackpadByDistance, "TRACKPAD", "distance")
-	dataFlechesByDistance = stat.meanArray(dataFlechesByDistance, "FLECHES", "distance")
-	dataTrackpadBySize = stat.meanArray(dataTrackpadBySize, "TRACKPAD", "taille")
-	dataFlechesBySize = stat.meanArray(dataFlechesBySize, "FLECHES", "taille")
-
-	chart.openPopUp(dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize)
-}
 function lastResults (dataArray) {
 	var size = (TOTALCELLSTOGET-IGNORED>=0)? TOTALCELLSTOGET-IGNORED : TOTALCELLSTOGET
 	var firstIndex = (dataArray.length/size-1)*size
