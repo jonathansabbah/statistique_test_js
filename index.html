@@ -10,11 +10,14 @@
 		<link href="css/bootstrap.min.css" rel="stylesheet">
 		<link rel="stylesheet" href="./css/style.css">
 		<script type="text/javascript">
-			var FPS = 150, CELLHEIGHT = 250, CELLWIDTH = 445, TOTALCELLS = 51
+			var FPS = 200, CELLWIDTH = 445, TOTALCELLS = 51
 			var PRES = 5, LOIN = 10, TRES_LOIN = 15
-			var ARRAYCELLS
-			var IGNORED = 2 //on ignore les premiers éléments
+			var IGNORED = 1 //on ignore les premiers éléments
 			var TOTALCELLSTOGET = 12
+			var ARRAYCELLS
+			var ARRAYSIZECELLS
+			var SIZECELLS = { PETIT: 100, NORMAL: 250, GRAND:500 }
+			var DISTANCEFIXEE
 
 			var cellNumber = 1;
 			var currentCellToGet = 0;
@@ -24,35 +27,34 @@
 			var deviceTested = 0;
 			var isStopped;
 			var db;
+			var precisionStartTime;
+			var precisionFirstPassage;
+			var cellHeight
+			var cellHeightIndex
 		</script>
-		 <script src="js/bundle.js"></script> 
+		<script src="js/bundle.js"></script> 
 	</head>
 
 	<body>
-
-
 		<div class="container">
 		  <!-- Modal -->
 		  <div class="modal fade" id="myModal" role="dialog">
 		    <div class="modal-dialog modal-lg">
-		    
 		      <!-- Modal content-->
 		      <div class="modal-content">
 		        <div class="modal-header">
 		          <button type="button" class="close" data-dismiss="modal">&times;</button>
-		          <h4 class="modal-title">Fin de la série</h4>
+		          <h4 class="modal-title">Résultats</h4>
 		        </div>
-		        <div id="textModal" class="modal-body">
-		          <p>Some text in the modal.</p>
-		        </div>
+		        <div id="chartContainer" ></div>        
+		        <div id="chartContainerSize" ></div>
+		         <div id="chartContainerPrecision" ></div>
 		        <div class="modal-footer">
 		          <button type="button" class="btn btn-default" data-dismiss="modal">Fermer</button>
 		        </div>
 		      </div>
-		      
 		    </div>
 		  </div>
-		  
 		</div>
 
 		<div id="topBar">
@@ -65,10 +67,11 @@
 			<canvas id="cells"/>
 	 	</div>
 
-
 		<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
 		<!-- Include all compiled plugins (below), or include individual files as needed -->
 		<script src="js/bootstrap.min.js"></script>
+		<script src="http://code.highcharts.com/highcharts.js"></script>
+		<script src="http://code.highcharts.com/modules/exporting.js"></script>
 	</body>
 </html>

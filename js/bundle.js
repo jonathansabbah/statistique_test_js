@@ -1,4 +1,173 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var stat = require("./stat")
+module.exports = { openPopUp: openPopUp }
+
+isPopUpOpened = false;
+
+function openPopUp (array1, array2, array3, array4) {
+	if (isPopUpOpened) { return; };
+	$("#myModal").modal();
+
+	performanceData(array1, array2)
+	precisionData(array1, array2)
+	sizeData(array3, array4)
+
+	isPopUpOpened = true;
+	$('#myModal').on('hidden.bs.modal', function (e) { isPopUpOpened = false })
+}
+
+function performanceData (array1, array2) {
+	data1 = stat.meanStd(data2speedarray(array1)) 
+	data2 = stat.meanStd(data2speedarray(array2))
+	$(function () {
+		buildChart(
+			'#chartContainer',
+			performanceSerie(array1, false), 
+			performanceSerie(array2, false),
+			'Performance à taille de cible fixée ('+SIZECELLS.NORMAL+" px)",
+			'Nombre de cases',
+			'Vitesse',
+			"Trackpad : "+data1.Mean+" cases/s — Flèches : "+data2.Mean+" cases/s",
+			' cases/s'
+			) 
+	});
+}
+
+function sizeData (array1, array2) {
+	data1 = stat.meanStd(data2speedarray(array1)) 
+	data2 = stat.meanStd(data2speedarray(array2))
+	$(function () {
+		buildChart(
+			'#chartContainerSize',
+			performanceSerie(array1, true), 
+			performanceSerie(array2, true),
+			'Performance à distance fixée ('+DISTANCEFIXEE+" cases)",
+			'Taille des cases',
+			'Vitesse',
+			"Trackpad : "+data1.Mean+" cases/s — Flèches : "+data2.Mean+" cases/s",
+			' cases/s'
+			) 
+	});
+}
+
+function precisionData (array1, array2) {
+	data1 = stat.meanStd(data2precision(array1)) 
+	data2 = stat.meanStd(data2precision(array2))
+	$(function () {
+		buildChart(
+			'#chartContainerPrecision',
+			precisionSerie(array1), 
+			precisionSerie(array2),
+			'Précision',
+			'Nombre de cases',
+			'Temps de validation une fois la case passée',
+			"Trackpad : "+data1.Mean+" ms — Flèches : "+data2.Mean+" ms",
+			' ms'
+			) 
+	});
+}
+
+
+// —————————————————————————————————————————————————————————————————————————————
+// FONCTIONS ANNEXES PRECISION
+// —————————————————————————————————————————————————————————————————————————————
+function precisionSerie (array) {
+	data = arrayOfjson2Array0fArrayPrecision(array)
+	data = data.sort(function (a,b) { return a[0]-b[0] })
+	return data
+}
+
+function arrayOfjson2Array0fArrayPrecision (arrayOfjson) {
+// [{ distance: 10, precision: 02:00}, { distance: 50, precision: 10:0}] --> [[10, 2.00], [50, 10.00]]
+	var data = []
+	arrayOfjson.forEach(function (value) {
+		data.push([value.distance, value.precision])
+	})
+	return data	
+}
+
+function data2precision (array) {
+	data = []
+	array.forEach(function (value) { data.push(value.precision) })
+	return data	
+}
+
+// —————————————————————————————————————————————————————————————————————————————
+// FONCTIONS ANNEXES PERFORMANCE
+// —————————————————————————————————————————————————————————————————————————————
+function performanceSerie (array, isSize) {
+	data = temps2speed(array, isSize)
+	data = data.sort(function (a,b) { return a[0]-b[0] })
+	data = duplicate2average(data) 
+	return data
+}
+
+function temps2speed (array, isSize) {
+// [{ distance: 10, temps: "02:00"}, { distance: 50, temps: "10:00"}] --> [[10, 5.00], [50, 5.00]]
+	var data = []
+	array.forEach(function (value) {
+		temps = Number(value.temps.replace(":","."))
+		if (temps > 0 && !isSize){
+			data.push([value.distance, Math.trunc(value.distance/temps*100)/100])
+		}
+		if (temps > 0 && isSize)
+			data.push([value.taille, Math.trunc(value.distance/temps*100)/100])
+	})
+	return data
+}
+
+function duplicate2average (array) {
+/// [[0,1], [0,3], [4,1]] --> [[0,2], [4,1]]
+//	Requiert une liste triée par x et [pas de doublon || des doublons simples]
+	var data = []
+	for (var i = 0; i <= array.length - 1;) {
+		if (i == array.length - 1) {
+			data.push(array[i])
+		} else if (array[i][0] != array[i+1][0]){
+			data.push(array[i])
+		} else {
+			average = (array[i][1] + array[i+1][1])/2
+			data.push([array[i][0], average])
+			i++;
+		}
+		i++
+	};
+	return data	
+}
+
+function data2speedarray (array) {
+// [{ distance: 10, temps: "02:00"}, { distance: 50, temps: "10:00"}] --> [2.00, 5.00]
+	var data = []
+	array.forEach(function (value) {
+		temps = Number(value.temps.replace(":","."))
+		if (temps > 0)
+			data.push(Math.trunc(value.distance/temps*100)/100)
+	})
+	return data
+}
+
+function buildChart (chart, serie1, serie2, title, xAxisTitle, yAxisTitle, subtitle, unite) {
+    $('#myModal').on('shown.bs.modal', function() {
+	    $(chart).highcharts({
+	    	title:{ text: title },
+	    	subtitle: { text: subtitle, align: 'center', x: -10 },
+	        xAxis:{ title: { text: xAxisTitle } },
+	        yAxis: { 
+	        	title: { text: yAxisTitle }, 
+	        	min: 0,
+	        	plotLines: [{ value: 0, width: 1, color: '#808080' }]
+	        },
+	        tooltip: { valueSuffix: unite },
+	        legend: { layout: 'vertical', align: 'right', verticalAlign: 'middle', borderWidth: 0 },
+	        series: [
+	        	{ name: "Trackpad", data: serie1 }, 
+	        	{ name: "Flèches", data: serie2 }
+	    	],
+	    	credits: { enabled: false } 
+	    });
+    });
+}
+},{"./stat":7}],2:[function(require,module,exports){
 module.exports = { 
 	chronoPause: chronoPause,
 	chronoStart: chronoStart,
@@ -43,7 +212,7 @@ function chronoReset(){
 	document.getElementById("chronotime").innerHTML = displayTime(sec,decisec); 
 	isStopped = true;
 }
-},{}],2:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 module.exports = {
 	drawCells: drawCells,
 }
@@ -55,15 +224,16 @@ function drawCells (cellNumber) {
 	var cells = document.getElementById('cells')
 	//Centrage
 	offsetX = (document.body.clientWidth-CELLWIDTH)/2;
-	offsetY = (1440-CELLHEIGHT)/2;
+	offsetY = (1440-cellHeight)/2;
 	cells.width = offsetX+CELLWIDTH
-	cells.height = 2*offsetY+CELLHEIGHT*TOTALCELLS
+	cells.height = 2*offsetY+cellHeight*TOTALCELLS
+	pixelSize = cellHeight / 2.5
 
 	var cell = cells.getContext('2d');
 	
 	for (var i = TOTALCELLS-1; i >= 0; i--) {
 		cell.beginPath();
-		cell.rect(offsetX,offsetY+i*CELLHEIGHT, CELLWIDTH, CELLHEIGHT);
+		cell.rect(offsetX,offsetY+i*cellHeight, CELLWIDTH, cellHeight);
 
 		//Couleur
 		cell.fillStyle = 
@@ -77,24 +247,27 @@ function drawCells (cellNumber) {
 		cell.stroke();
 
 		//Numéro
-		cell.font = "100px Helvetica";
-		var gradient=cell.createLinearGradient(0,0,cells.width,0);
+		cell.font = pixelSize+"px Helvetica";
+		var gradient = cell.createLinearGradient(0,0,cells.width,0);
 		gradient.addColorStop("0","white");
 		gradient.addColorStop("1.0","white");
-		cell.fillStyle=gradient;
-		cell.textAlign="center"
+		cell.fillStyle = gradient;
+		cell.textAlign = "center"
 		text = -i+Math.floor(TOTALCELLS/2)+""
-		textX = offsetX+CELLWIDTH/2
-		textY = i*CELLHEIGHT+offsetY+(CELLHEIGHT-70)/2+70
+		textX = offsetX + (CELLWIDTH/2)
+		textY = offsetY + (i*cellHeight) + (cellHeight/2+pixelSize/3)
 		cell.fillText(text,textX,textY);
 	};
 }
 
 function Top (darkzone) { return parseInt(darkzone.style.top.replace("px",""))}
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 var chrono = require('./chrono')
+var scroll = require('scroll')
 var stat = require('./stat')
-module.exports = {	keydown: keydown }
+var chart = require('./chart')
+var precision = require('./precision')
+module.exports = { keydown: keydown }
 
 // —————————————————————————————————————————————————————————————————————————————
 // Input/Output
@@ -106,14 +279,20 @@ function clic (device) {
 
 	//DATA
 	if (currentCellToGet>=IGNORED) {
-		dataResults[device].push({	distance : Math.abs(cellNumber), temps : chrono.displayTime(sec,decisec)})
+		dataResults[device].push({	
+			distance : Math.abs(cellNumber), 
+			taille: cellHeight,
+			temps : chrono.displayTime(sec,decisec), 
+			precision: precision.saveAndResetPrecisionTime()
+		})
 	};
 	currentCellToGet = (currentCellToGet+1) % ARRAYCELLS.length
+	cellHeightIndex = (cellHeightIndex+1) % ARRAYSIZECELLS.length
+	cellHeight = ARRAYSIZECELLS[cellHeightIndex]
 	if (endArrayCells) { deviceTested++ };
 	if (endArrayCells) { 
 		db.donnee.upsert({
 			device: device, 
-			taille: CELLHEIGHT, 
 			orientation: "vertical",
 			date: new Date(),
 			dataResults: lastResults(dataResults[device])
@@ -121,36 +300,18 @@ function clic (device) {
 	}
 
 	//VUE
-	document.body.scrollTop = Math.floor(TOTALCELLS/2)*CELLHEIGHT //Retour au milieu
+	document.body.scrollTop = Math.floor(TOTALCELLS/2)*cellHeight //Retour au milieu
 	if (endArrayCells) {
 		document.getElementById("device").innerHTML =
 		(document.getElementById("device").innerHTML == "Trackpad")? "Flèches":	"Trackpad";
 	};	
 	document.getElementById("cellToGet").innerHTML = 
 		(endArrayCells && deviceTested%2==1)? "Appuyer sur zéro" : ARRAYCELLS[currentCellToGet];
-	if (endArrayCells && deviceTested%2==0) { openPopUp(stat.stringStat()) };
-	stat.displayStat(); 
+	if (endArrayCells && deviceTested%2==0) { loadPopUp("THIS SESSION") }
 
 	//CHRONO
 	chrono.chronoReset();
 	if (!endArrayCells) { chrono.chronoStart(); }
-}
-
-isPopUpOpened = false;
-function openPopUp (text) {
-	if (isPopUpOpened) { return; };
-	$("#myModal").modal();
-	document.getElementById("textModal").innerHTML = text; 
-	isPopUpOpened = true;
-	$('#myModal').on('hidden.bs.modal', function (e) {
-	  isPopUpOpened = false
-	})
-}
-
-function lastResults (dataArray) {
-	var size = (TOTALCELLSTOGET-IGNORED>=0)? TOTALCELLSTOGET-IGNORED : TOTALCELLSTOGET
-	var firstIndex = (dataArray.length/size-1)*size
-	return dataArray.slice(firstIndex,firstIndex+size)
 }
 
 function keydown(evt) {
@@ -166,49 +327,98 @@ function keydown(evt) {
             break;
         //Fleches
         case 38: //down
-        	animateScroll(document.body.scrollTop,-CELLHEIGHT);
+        	animateScroll(-cellHeight);
             break;
         case 40: //up
-        	animateScroll(document.body.scrollTop,CELLHEIGHT);
+        	animateScroll(cellHeight);
         	break;
         case 13: //entrée
         	clic("FLECHES");
+            break;
+        case 65: //a
+			loadPopUp ("ALL")
             break;
     }
 }
 
 window.onclick = function () { clic("TRACKPAD"); }
 
-DURATION = 100
 isScrolling = false
-function animateScroll (a, b) {
-	frameTime = 1/FPS*1000 //(en ms)
+function animateScroll (d) {
 	if (isScrolling){ return; }
-
-	init = true 
-	var timer = setInterval(function () {
-			isScrolling = true;
-
-			//Animation
-			document.body.scrollTop += b/(DURATION/frameTime)
-			
-			//Fin de l'animation
-			if ((b>0 && document.body.scrollTop>a+b) || (b<0 && document.body.scrollTop<a+b)) { 
-				isScrolling = false
-				clearInterval(timer)
-			}
-			
-			//Arrete l'intervalle en cas de dépassement du temps max DURATION 
-			//(utile pour les valeurs max)
-			if (init) { 
-				setTimeout(function () { isScrolling = false; clearInterval(timer);}, DURATION);
-				init = false
-			}
-	},frameTime)
+	MAXCELLHEIGHT = 500
+	MINCELLHEIGHT = 100
+	IDEALSPEEDMIN = 80
+	IDEALSPEEDMAX = 200
+	TEMP250 = 110
+	//étalage linéaire entre MIN-MAX et les vitesses idéales 
+	duration = (cellHeight==250)? TEMP250 : (cellHeight-MINCELLHEIGHT)/(MAXCELLHEIGHT-MINCELLHEIGHT) * (IDEALSPEEDMAX-IDEALSPEEDMIN) + IDEALSPEEDMIN
+	isScrolling = true;
+	scroll.top(document.body,document.body.scrollTop+d, { duration: duration, ease: 'inOutQuad' }, function(error, position) {
+		isScrolling = false
+	})
 }
-},{"./chrono":1,"./stat":5}],4:[function(require,module,exports){
+
+// —————————————————————————————————————————————————————————————————————————————
+// FONCTIONS ANNEXES
+// —————————————————————————————————————————————————————————————————————————————
+function loadPopUp (from) {
+	var dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize
+	if (from == "ALL") {
+		var i = 0
+		stat.allData("TRACKPAD", "distance", function (data) {
+			dataTrackpadByDistance = data
+			i++
+			if (i==4) { computeArrayData(dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize) }
+		})
+		stat.allData("FLECHES", "distance", function (data) {
+			dataFlechesByDistance = data
+			i++
+			if (i==4) { computeArrayData(dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize) }
+		})
+		stat.allData("TRACKPAD", "taille", function (data) {
+			dataTrackpadBySize = data
+			i++
+			if (i==4) { computeArrayData(dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize) }
+		})
+		stat.allData("FLECHES", "taille", function (data) {
+			dataFlechesBySize = data
+			i++
+			if (i==4) { computeArrayData(dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize) }
+		})
+	}
+	if (from == "THIS SESSION") {
+		dataTrackpadByDistance = dataResults.TRACKPAD
+		dataFlechesByDistance = dataResults.FLECHES
+		dataTrackpadBySize = dataResults.TRACKPAD
+		dataFlechesBySize = dataResults.FLECHES
+		computeArrayData(dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize)
+	}
+}
+
+function computeArrayData (data1, data2, data3, data4) {
+	var dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize
+	
+	dataTrackpadByDistance = stat.sort(data1, "distance")
+	dataFlechesByDistance = stat.sort(data2, "distance")
+	dataTrackpadBySize = stat.sort(data3, "taille")
+	dataFlechesBySize = stat.sort(data4, "taille")
+	dataTrackpadByDistance = stat.meanArray(dataTrackpadByDistance, "TRACKPAD", "distance")
+	dataFlechesByDistance = stat.meanArray(dataFlechesByDistance, "FLECHES", "distance")
+	dataTrackpadBySize = stat.meanArray(dataTrackpadBySize, "TRACKPAD", "taille")
+	dataFlechesBySize = stat.meanArray(dataFlechesBySize, "FLECHES", "taille")
+
+	chart.openPopUp(dataTrackpadByDistance, dataFlechesByDistance, dataTrackpadBySize, dataFlechesBySize)
+}
+function lastResults (dataArray) {
+	var size = (TOTALCELLSTOGET-IGNORED>=0)? TOTALCELLSTOGET-IGNORED : TOTALCELLSTOGET
+	var firstIndex = (dataArray.length/size-1)*size
+	return dataArray.slice(firstIndex,firstIndex+size)
+}
+},{"./chart":1,"./chrono":2,"./precision":6,"./stat":7,"scroll":24}],5:[function(require,module,exports){
 var draw = require('./draw');
 var input = require('./input');
+var precision = require("./precision");
 var minimongo = require("minimongo");
 
 loop();
@@ -220,21 +430,31 @@ function init () {
 	ARRAYCELLS = buildRandomInput()
 	document.getElementById("cellToGet").innerHTML = ARRAYCELLS[0]
 	
-	//Placement au milieu
-	document.body.scrollTop = Math.floor(TOTALCELLS/2)*CELLHEIGHT
+	// //Init des tailles de cellules
+	ARRAYSIZECELLS = buildCellSize()
+	cellHeightIndex = 0
+	cellHeight = ARRAYSIZECELLS[cellHeightIndex]
 
+	//Placement au milieu
+	setTimeout(function () {
+		document.body.scrollTop = Math.floor(TOTALCELLS/2)*SIZECELLS.NORMAL
+	}, 10)
+	
 	//Initialisation de la BD
 	var IndexedDb = minimongo.IndexedDb;
 	db = new IndexedDb({namespace: "dbStat"}, function() {
 		db.addCollection("donnee");
-	}, function() { alert("some error!"); });
+	}, function() { alert("Erreur IndexedDB!"); });
+
+	//Test de Précision
+	precisionFirstPassage = true
 }
 
 var start = true;
 function loop () {
 	setInterval(function () {
-		var scrollY = document.body.scrollTop+CELLHEIGHT/2;
-		cellNumberTemp = -Math.floor((scrollY - scrollY%CELLHEIGHT)/CELLHEIGHT)+Math.floor(TOTALCELLS/2)
+		var scrollY = document.body.scrollTop+cellHeight/2;
+		cellNumberTemp = -Math.floor((scrollY - scrollY%cellHeight)/cellHeight)+Math.floor(TOTALCELLS/2)
 		if (start) {
 			draw.drawCells(cellNumberTemp)
 			cellNumber = cellNumberTemp
@@ -244,83 +464,162 @@ function loop () {
 	 		if (cellNumberTemp != cellNumber) {
 				draw.drawCells(cellNumberTemp)
 	 			cellNumber = cellNumberTemp
+	 			if (currentCellToGet>=IGNORED) { precision.precisionCheck() }
 	 		}
 	 	} 
 	}, 1/FPS*1000)
 }
 
+DISTANCEFIXEE = Math.floor(TOTALCELLS/4)
 function buildRandomInput () {
 	var distance = []
-	for (var i = 0; i < TOTALCELLSTOGET; i++)
-		distance.push(Math.floor((Math.random() * TOTALCELLS - TOTALCELLS/2)));
+	totalCellToGetAdjusted = (TOTALCELLSTOGET > TOTALCELLS)? TOTALCELLS : TOTALCELLSTOGET
+	for (var i = 0; i < totalCellToGetAdjusted; i++){
+		do { var num = randomInt(TOTALCELLS) }	while (distance.contains(num))
+		distance.push(num);
+	}
+	if (totalCellToGetAdjusted >= 3) {
+		distance[distance.length-3] = DISTANCEFIXEE
+		distance[distance.length-2] = DISTANCEFIXEE
+		distance[distance.length-1] = DISTANCEFIXEE
+	}
 	return distance;
 }
-},{"./draw":2,"./input":3,"minimongo":6}],5:[function(require,module,exports){
+
+function buildCellSize () {
+	var size = []
+	totalCellToGetAdjusted = (TOTALCELLSTOGET > TOTALCELLS)? TOTALCELLS : TOTALCELLSTOGET
+	for (var i = 0; i < totalCellToGetAdjusted; i++){
+		size.push(SIZECELLS.NORMAL);
+	}
+	if (totalCellToGetAdjusted >= 3) {
+		size[size.length-2] = randomIntInRange(SIZECELLS.PETIT, SIZECELLS.NORMAL);
+		size[size.length-1] = randomIntInRange(SIZECELLS.NORMAL, SIZECELLS.GRAND);
+	}
+	return size;
+}
+
+// —————————————————————————————————————————————————————————————————————————————
+// FONCTIONS ANNEXES
+// —————————————————————————————————————————————————————————————————————————————
+
+function randomInt (radius) {
+	//Renvoi un nombre entier entre radius (inclus) et -radius (inclus)
+	return Math.floor(radius*Math.random())-Math.floor(radius/2)
+}
+
+function randomIntInRange(start,end){
+       return Math.floor(start + (1+end-start)*Math.random())  
+}
+
+Array.prototype.contains = function(obj) {
+    var i = this.length;
+    while (i--) { if (this[i] === obj) { return true; } }
+    return false;
+}
+},{"./draw":3,"./input":4,"./precision":6,"minimongo":8}],6:[function(require,module,exports){
+module.exports = { 
+	precisionCheck: precisionCheck,
+	saveAndResetPrecisionTime: saveAndResetPrecisionTime,
+}
+// —————————————————————————————————————————————————————————————————————————————
+// Test de Precision
+// —————————————————————————————————————————————————————————————————————————————
+
+function precisionCheck () {
+	if (precisionFirstPassage){
+		if (ARRAYCELLS[currentCellToGet] >= 0 && cellNumber >= ARRAYCELLS[currentCellToGet]
+			|| ARRAYCELLS[currentCellToGet] < 0 && cellNumber <= ARRAYCELLS[currentCellToGet]) {
+			precisionStartTime = new Date()
+			precisionFirstPassage = false
+		}
+	}
+}
+
+function saveAndResetPrecisionTime () {
+	precisionFirstPassage = true
+	if (precisionStartTime != -1) {	
+		precision = new Date() - precisionStartTime
+		precisionStartTime = -1
+		return precision
+	}
+}
+},{}],7:[function(require,module,exports){
 var ss = require('simple-statistics')
 var numeral = require('numeral')
 
 module.exports = {
-	displayStat: displayStat,
-	stringStat, stringStat,
+	sort: sort,
+	allData: allData,
+	meanArray: meanArray,
+	meanStd: meanStd
 }
 
 // —————————————————————————————————————————————————————————————————————————————
 // Stat
 // —————————————————————————————————————————————————————————————————————————————
-function displayStat () {
-	console.log()
-	console.log("Trackpad "+mean_std(dataToArray(dataResults.TRACKPAD)))
-	console.log("Flèches  "+mean_std(dataToArray(dataResults.FLECHES)))
-	console.log("Trackpad " +by_distance(dataResults.TRACKPAD))
-	console.log("Fleches " +by_distance(dataResults.FLECHES))
-}
-
-function stringStat () {
-	return "<p>Trackpad "+mean_std(dataToArray(dataResults.TRACKPAD))+ "<p>"
-	+"<p>Flèches  "+mean_std(dataToArray(dataResults.FLECHES))+ "<p>"
-	+"<p>Trackpad " +by_distance(dataResults.TRACKPAD)+ "<p>"
-	+"<p>Fleches " +by_distance(dataResults.FLECHES)+ "<p>"
-}
-
-function by_distance (data) {
-	var pres = [], loin =[], tres_loin =[]
-	data.forEach(function (value) {
-		var distance = value.distance;
-		var number = Number(value.temps.replace(":","."))		
-		if (distance <= PRES) {
-			pres.push(number);
-		} else if (distance <= LOIN && distance > PRES) {
-			loin.push(number);
-		} else if (distance > LOIN) {
-			tres_loin.push(number);
+function meanArray (data, device, xAxis) {
+	//Calcul des moyennes de data par XAxis (= "distance" ou "taille")
+ 	finalData = []
+ 	for (var i = 0; i <= data.length - 1;) {
+ 		var j = 0, timeArray = [], precisionArray = []
+ 		do{
+ 			timeArray.push(Number(data[i+j].temps.replace(":",".")))
+ 			if (xAxis == "distance") { precisionArray.push(data[i+j].precision) } 
+ 			if (i+j == data.length - 1) { 
+ 				oneData = {
+ 					distance: data[i+j].distance,
+ 					temps: (ss.mean(timeArray)+"").replace(".",":"),
+ 				}
+ 				if (xAxis == "distance") { oneData.precision = ss.mean(precisionArray) }
+ 				if (xAxis == "taille") { oneData.taille = data[i+j].taille }
+ 				finalData.push(oneData)
+ 				return finalData
+ 			}
+ 			j++
+ 		} while (data[i+j-1][xAxis] == data[i+j][xAxis])
+ 		oneData = {
+			distance: data[i+j-1].distance,
+			temps: (ss.mean(timeArray)+"").replace(".",":"),
 		}
+		if (xAxis == "distance") { oneData.precision = ss.mean(precisionArray) }
+		if (xAxis == "taille") { oneData.taille = data[i+j-1].taille }
+ 		finalData.push(oneData)
+ 		i=i+j
+ 	}
+ 	return finalData
+}
+
+function allData (device, xAxis, callback) {
+	//data : tableau de tous les objets { temps, distance, taille, précision } de chaque test 
+	// à taille fixee ou à distance fixee
+	db.donnee._findFetch({ device: device },{}, function (res) {
+		data = []
+	    res.forEach(function (value) {
+			value.dataResults.forEach(function (results) {
+	    		if (xAxis == "distance" && results.taille == SIZECELLS.NORMAL) { data.push(results) }
+	    		if (xAxis == "taille" && results.distance == DISTANCEFIXEE) { data.push(results) };
+	    	})
+		})
+		console.log("Données "+device+" :"+ data.length)
+		callback(data)
 	})
-	var mean_pres = mean_std(pres);
-	var mean_loin = mean_std(loin);
-	var mean_tres_loin = mean_std(tres_loin);
-	return "(Près = "+mean_pres+", Loin = "+mean_loin+", Très_loin = "+mean_tres_loin+")"
 }
 
-function dataToArray (json) {
-	var data = []
-	json.forEach(function (value) {
-		data.push(Number(value.temps.replace(":",".")))
+function sort (data, xAxis) {
+	//trie par distance ou par taille
+	return data.sort(function (a,b) { 
+		if (xAxis == "distance") { return a.distance-b.distance }
+		if (xAxis == "taille") { return a.taille-b.taille }
 	})
-	return data
 }
 
-function mean_std (data) {
-	if (data.length==0) { return "(Mean = 0:00, Std = 0:00)"; }
-	var mean = ss.mean(data);
-	var std = ss.standard_deviation(data);
-	return "(Mean = "+ formatize(mean) + ", Std = "+ formatize(std)+")";
+function meanStd (array) {
+	return { Mean: formatize(ss.mean(array)), Std: formatize(ss.standard_deviation(array))}
 }
 
-function formatize (number) {
-	return numeral(number).format('0.00');
-}
-
-},{"numeral":22,"simple-statistics":23}],6:[function(require,module,exports){
+function formatize (number) { return numeral(number).format('0.00'); }
+},{"numeral":28,"simple-statistics":29}],8:[function(require,module,exports){
 exports.MemoryDb = require('./lib/MemoryDb');
 exports.LocalStorageDb = require('./lib/LocalStorageDb');
 exports.IndexedDb = require('./lib/IndexedDb');
@@ -329,7 +628,7 @@ exports.RemoteDb = require('./lib/RemoteDb');
 exports.HybridDb = require('./lib/HybridDb');
 exports.utils = require('./lib/utils');
 
-},{"./lib/HybridDb":8,"./lib/IndexedDb":9,"./lib/LocalStorageDb":10,"./lib/MemoryDb":11,"./lib/RemoteDb":12,"./lib/WebSQLDb":13,"./lib/utils":16}],7:[function(require,module,exports){
+},{"./lib/HybridDb":10,"./lib/IndexedDb":11,"./lib/LocalStorageDb":12,"./lib/MemoryDb":13,"./lib/RemoteDb":14,"./lib/WebSQLDb":15,"./lib/utils":18}],9:[function(require,module,exports){
 var _ = require('lodash');
 
 EJSON = {}; // Global!
@@ -657,7 +956,7 @@ EJSON.clone = function (v) {
 
 module.exports = EJSON;
 
-},{"lodash":21}],8:[function(require,module,exports){
+},{"lodash":23}],10:[function(require,module,exports){
 
 /*
 
@@ -972,7 +1271,7 @@ HybridCollection = (function() {
 
 })();
 
-},{"./utils":16,"lodash":21}],9:[function(require,module,exports){
+},{"./utils":18,"lodash":23}],11:[function(require,module,exports){
 var Collection, IDBStore, IndexedDb, async, compileSort, processFind, utils, _;
 
 _ = require('lodash');
@@ -1423,7 +1722,7 @@ Collection = (function() {
 
 })();
 
-},{"./selector":15,"./utils":16,"async":17,"idb-wrapper":19,"lodash":21}],10:[function(require,module,exports){
+},{"./selector":17,"./utils":18,"async":19,"idb-wrapper":21,"lodash":23}],12:[function(require,module,exports){
 var Collection, LocalStorageDb, compileSort, processFind, utils, _;
 
 _ = require('lodash');
@@ -1722,7 +2021,7 @@ Collection = (function() {
 
 })();
 
-},{"./selector":15,"./utils":16,"lodash":21}],11:[function(require,module,exports){
+},{"./selector":17,"./utils":18,"lodash":23}],13:[function(require,module,exports){
 var Collection, MemoryDb, compileSort, processFind, utils, _;
 
 _ = require('lodash');
@@ -1932,7 +2231,7 @@ Collection = (function() {
 
 })();
 
-},{"./selector":15,"./utils":16,"lodash":21}],12:[function(require,module,exports){
+},{"./selector":17,"./utils":18,"lodash":23}],14:[function(require,module,exports){
 var $, Collection, RemoteDb, async, jQueryHttpClient, utils, _;
 
 _ = require('lodash');
@@ -2128,7 +2427,7 @@ Collection = (function() {
 
 })();
 
-},{"./jQueryHttpClient":14,"./utils":16,"async":17,"jquery":20,"lodash":21}],13:[function(require,module,exports){
+},{"./jQueryHttpClient":16,"./utils":18,"async":19,"jquery":22,"lodash":23}],15:[function(require,module,exports){
 var Collection, WebSQLDb, async, compileSort, doNothing, processFind, utils, _;
 
 _ = require('lodash');
@@ -2551,7 +2850,7 @@ Collection = (function() {
 
 })();
 
-},{"./selector":15,"./utils":16,"async":17,"lodash":21}],14:[function(require,module,exports){
+},{"./selector":17,"./utils":18,"async":19,"lodash":23}],16:[function(require,module,exports){
 module.exports = function(method, url, params, data, success, error) {
   var fullUrl, req;
   fullUrl = url + "?" + $.param(params);
@@ -2581,7 +2880,7 @@ module.exports = function(method, url, params, data, success, error) {
   });
 };
 
-},{}],15:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 /*
 ========================================
 Meteor is licensed under the MIT License
@@ -3318,7 +3617,7 @@ LocalCollection._compileSort = function (spec) {
 exports.compileDocumentSelector = compileDocumentSelector;
 exports.compileSort = LocalCollection._compileSort;
 
-},{"./EJSON":7,"lodash":21}],16:[function(require,module,exports){
+},{"./EJSON":9,"lodash":23}],18:[function(require,module,exports){
 var async, bowser, compileDocumentSelector, compileSort, deg2rad, getDistanceFromLatLngInM, isLocalStorageSupported, pointInPolygon, processGeoIntersectsOperator, processNearOperator, _;
 
 _ = require('lodash');
@@ -3620,7 +3919,7 @@ exports.regularizeUpsert = function(docs, bases, success, error) {
   return [items, success, error];
 };
 
-},{"./HybridDb":8,"./IndexedDb":9,"./LocalStorageDb":10,"./MemoryDb":11,"./WebSQLDb":13,"./selector":15,"async":17,"bowser":18,"lodash":21}],17:[function(require,module,exports){
+},{"./HybridDb":10,"./IndexedDb":11,"./LocalStorageDb":12,"./MemoryDb":13,"./WebSQLDb":15,"./selector":17,"async":19,"bowser":20,"lodash":23}],19:[function(require,module,exports){
 (function (process){
 /*!
  * async
@@ -4682,7 +4981,7 @@ exports.regularizeUpsert = function(docs, bases, success, error) {
 }());
 
 }).call(this,require('_process'))
-},{"_process":24}],18:[function(require,module,exports){
+},{"_process":30}],20:[function(require,module,exports){
 /*!
   * Bowser - a browser detector
   * https://github.com/ded/bowser
@@ -4960,7 +5259,7 @@ exports.regularizeUpsert = function(docs, bases, success, error) {
   return bowser
 });
 
-},{}],19:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 /*global window:false, self:false, define:false, module:false */
 
 /**
@@ -6307,7 +6606,7 @@ exports.regularizeUpsert = function(docs, bases, success, error) {
 
 }, this);
 
-},{}],20:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v2.1.4
  * http://jquery.com/
@@ -15519,7 +15818,7 @@ return jQuery;
 
 }));
 
-},{}],21:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -22309,7 +22608,319 @@ return jQuery;
 }.call(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],22:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
+var raf = require('raf-component')
+var ease = require('ease-component')
+var listener = require('eventlistener')
+
+var scroll = function(direction, element, target, options, callback) {
+  var type = 'inOutSine'
+  var duration = 350
+
+  if (typeof options === 'function') {
+    callback = options
+  }
+
+  else {
+    options = options || {}
+    type = options.ease || type
+    duration = options.duration || duration
+  }
+  
+  callback = callback || function() {} 
+
+  var start = +new Date
+  var from = element['scroll' + direction]
+  var to = (target == null ?
+    element['scroll' + (direction === 'Top' ? 'Height' : 'Width')] :
+    target
+  )
+
+  var cancelled = false
+  var cancel = function() {
+    cancelled = true
+    listener.remove(element, 'mousewheel', cancel)
+  }
+  
+  if (from === to) {
+    return callback(new Error(
+      'Element already at target position.'
+    ))
+  }
+  
+  listener.add(element, 'mousewheel', cancel)
+
+  var scroll = function(timestamp) {
+    if (cancelled) {
+      return callback(new Error(
+        'Scroll cancelled by the user.'
+      ))
+    }
+
+    var now = +new Date
+    var time = Math.min(1, ((now - start) / duration))
+    var eased = ease[type](time)
+
+    element['scroll' + direction] = (eased * (to - from)) + from
+
+    if (time < 1) {
+      return raf(scroll)
+    }
+    
+    cancel()  
+    callback(null, element['scroll' + direction])
+  }
+
+  raf(scroll)
+}
+
+module.exports = {
+  top: function(element, target, options, callback) {
+    scroll('Top', element, target, options, callback)
+  },
+  left: function(element, target, options, callback) {
+    scroll('Left', element, target, options, callback)
+  }
+}
+
+},{"ease-component":25,"eventlistener":26,"raf-component":27}],25:[function(require,module,exports){
+
+// easing functions from "Tween.js"
+
+exports.linear = function(n){
+  return n;
+};
+
+exports.inQuad = function(n){
+  return n * n;
+};
+
+exports.outQuad = function(n){
+  return n * (2 - n);
+};
+
+exports.inOutQuad = function(n){
+  n *= 2;
+  if (n < 1) return 0.5 * n * n;
+  return - 0.5 * (--n * (n - 2) - 1);
+};
+
+exports.inCube = function(n){
+  return n * n * n;
+};
+
+exports.outCube = function(n){
+  return --n * n * n + 1;
+};
+
+exports.inOutCube = function(n){
+  n *= 2;
+  if (n < 1) return 0.5 * n * n * n;
+  return 0.5 * ((n -= 2 ) * n * n + 2);
+};
+
+exports.inQuart = function(n){
+  return n * n * n * n;
+};
+
+exports.outQuart = function(n){
+  return 1 - (--n * n * n * n);
+};
+
+exports.inOutQuart = function(n){
+  n *= 2;
+  if (n < 1) return 0.5 * n * n * n * n;
+  return -0.5 * ((n -= 2) * n * n * n - 2);
+};
+
+exports.inQuint = function(n){
+  return n * n * n * n * n;
+}
+
+exports.outQuint = function(n){
+  return --n * n * n * n * n + 1;
+}
+
+exports.inOutQuint = function(n){
+  n *= 2;
+  if (n < 1) return 0.5 * n * n * n * n * n;
+  return 0.5 * ((n -= 2) * n * n * n * n + 2);
+};
+
+exports.inSine = function(n){
+  return 1 - Math.cos(n * Math.PI / 2 );
+};
+
+exports.outSine = function(n){
+  return Math.sin(n * Math.PI / 2);
+};
+
+exports.inOutSine = function(n){
+  return .5 * (1 - Math.cos(Math.PI * n));
+};
+
+exports.inExpo = function(n){
+  return 0 == n ? 0 : Math.pow(1024, n - 1);
+};
+
+exports.outExpo = function(n){
+  return 1 == n ? n : 1 - Math.pow(2, -10 * n);
+};
+
+exports.inOutExpo = function(n){
+  if (0 == n) return 0;
+  if (1 == n) return 1;
+  if ((n *= 2) < 1) return .5 * Math.pow(1024, n - 1);
+  return .5 * (-Math.pow(2, -10 * (n - 1)) + 2);
+};
+
+exports.inCirc = function(n){
+  return 1 - Math.sqrt(1 - n * n);
+};
+
+exports.outCirc = function(n){
+  return Math.sqrt(1 - (--n * n));
+};
+
+exports.inOutCirc = function(n){
+  n *= 2
+  if (n < 1) return -0.5 * (Math.sqrt(1 - n * n) - 1);
+  return 0.5 * (Math.sqrt(1 - (n -= 2) * n) + 1);
+};
+
+exports.inBack = function(n){
+  var s = 1.70158;
+  return n * n * (( s + 1 ) * n - s);
+};
+
+exports.outBack = function(n){
+  var s = 1.70158;
+  return --n * n * ((s + 1) * n + s) + 1;
+};
+
+exports.inOutBack = function(n){
+  var s = 1.70158 * 1.525;
+  if ( ( n *= 2 ) < 1 ) return 0.5 * ( n * n * ( ( s + 1 ) * n - s ) );
+  return 0.5 * ( ( n -= 2 ) * n * ( ( s + 1 ) * n + s ) + 2 );
+};
+
+exports.inBounce = function(n){
+  return 1 - exports.outBounce(1 - n);
+};
+
+exports.outBounce = function(n){
+  if ( n < ( 1 / 2.75 ) ) {
+    return 7.5625 * n * n;
+  } else if ( n < ( 2 / 2.75 ) ) {
+    return 7.5625 * ( n -= ( 1.5 / 2.75 ) ) * n + 0.75;
+  } else if ( n < ( 2.5 / 2.75 ) ) {
+    return 7.5625 * ( n -= ( 2.25 / 2.75 ) ) * n + 0.9375;
+  } else {
+    return 7.5625 * ( n -= ( 2.625 / 2.75 ) ) * n + 0.984375;
+  }
+};
+
+exports.inOutBounce = function(n){
+  if (n < .5) return exports.inBounce(n * 2) * .5;
+  return exports.outBounce(n * 2 - 1) * .5 + .5;
+};
+
+// aliases
+
+exports['in-quad'] = exports.inQuad;
+exports['out-quad'] = exports.outQuad;
+exports['in-out-quad'] = exports.inOutQuad;
+exports['in-cube'] = exports.inCube;
+exports['out-cube'] = exports.outCube;
+exports['in-out-cube'] = exports.inOutCube;
+exports['in-quart'] = exports.inQuart;
+exports['out-quart'] = exports.outQuart;
+exports['in-out-quart'] = exports.inOutQuart;
+exports['in-quint'] = exports.inQuint;
+exports['out-quint'] = exports.outQuint;
+exports['in-out-quint'] = exports.inOutQuint;
+exports['in-sine'] = exports.inSine;
+exports['out-sine'] = exports.outSine;
+exports['in-out-sine'] = exports.inOutSine;
+exports['in-expo'] = exports.inExpo;
+exports['out-expo'] = exports.outExpo;
+exports['in-out-expo'] = exports.inOutExpo;
+exports['in-circ'] = exports.inCirc;
+exports['out-circ'] = exports.outCirc;
+exports['in-out-circ'] = exports.inOutCirc;
+exports['in-back'] = exports.inBack;
+exports['out-back'] = exports.outBack;
+exports['in-out-back'] = exports.inOutBack;
+exports['in-bounce'] = exports.inBounce;
+exports['out-bounce'] = exports.outBounce;
+exports['in-out-bounce'] = exports.inOutBounce;
+
+},{}],26:[function(require,module,exports){
+(function(root,factory){
+    if (typeof define === 'function' && define.amd) {
+        define(factory);
+    } else if (typeof exports === 'object') {
+        module.exports = factory();
+    } else {
+        root.eventListener = factory();
+  }
+}(this, function () {
+	function wrap(standard, fallback) {
+		return function (el, evtName, listener, useCapture) {
+			if (el[standard]) {
+				el[standard](evtName, listener, useCapture);
+			} else if (el[fallback]) {
+				el[fallback]('on' + evtName, listener);
+			}
+		}
+	}
+
+    return {
+		add: wrap('addEventListener', 'attachEvent'),
+		remove: wrap('removeEventListener', 'detachEvent')
+	};
+}));
+},{}],27:[function(require,module,exports){
+/**
+ * Expose `requestAnimationFrame()`.
+ */
+
+exports = module.exports = window.requestAnimationFrame
+  || window.webkitRequestAnimationFrame
+  || window.mozRequestAnimationFrame
+  || window.oRequestAnimationFrame
+  || window.msRequestAnimationFrame
+  || fallback;
+
+/**
+ * Fallback implementation.
+ */
+
+var prev = new Date().getTime();
+function fallback(fn) {
+  var curr = new Date().getTime();
+  var ms = Math.max(0, 16 - (curr - prev));
+  var req = setTimeout(fn, ms);
+  prev = curr;
+  return req;
+}
+
+/**
+ * Cancel.
+ */
+
+var cancel = window.cancelAnimationFrame
+  || window.webkitCancelAnimationFrame
+  || window.mozCancelAnimationFrame
+  || window.oCancelAnimationFrame
+  || window.msCancelAnimationFrame
+  || window.clearTimeout;
+
+exports.cancel = function(id){
+  cancel.call(window, id);
+};
+
+},{}],28:[function(require,module,exports){
 /*!
  * numeral.js
  * version : 1.5.3
@@ -22990,7 +23601,7 @@ return jQuery;
     }
 }).call(this);
 
-},{}],23:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 'use strict';
 // # simple-statistics
 //
@@ -24566,7 +25177,7 @@ return jQuery;
 
 })(this);
 
-},{}],24:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -24658,4 +25269,4 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}]},{},[4]);
+},{}]},{},[5]);
