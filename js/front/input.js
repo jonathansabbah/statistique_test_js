@@ -2,6 +2,7 @@ var chrono = require('./chrono')
 var scroll = require('scroll')
 var data = require('./data')
 var precision = require('./precision')
+var ressenti = require('./ressenti')
 module.exports = { keydown: keydown }
 
 // —————————————————————————————————————————————————————————————————————————————
@@ -24,9 +25,10 @@ function clic (device) {
 	currentCellToGet = (currentCellToGet+1) % ARRAYCELLS.length
 	cellHeightIndex = (cellHeightIndex+1) % ARRAYSIZECELLS.length
 	cellHeight = ARRAYSIZECELLS[cellHeightIndex]
+	
 	if (endArrayCells) { deviceTested++ };
 	if (endArrayCells) { 
-		db.donnee.upsert({
+		db[DONNEE].upsert({
 			device: device, 
 			orientation: "vertical",
 			date: new Date(),
@@ -35,13 +37,17 @@ function clic (device) {
 	}
 
 	//VUE
-	document.body.scrollTop = Math.floor(TOTALCELLS/2)*cellHeight //Retour au milieu
+	setTimeout(function () {
+		document.body.scrollTop = Math.floor(TOTALCELLS/2)*cellHeight //Retour au milieu
+	}, 5)
 	if (endArrayCells) {
-		document.getElementById("device").innerHTML =
-		(document.getElementById("device").innerHTML == "Trackpad")? "Flèches":	"Trackpad";
-	};	
-	document.getElementById("cellToGet").innerHTML = 
-		(endArrayCells && deviceTested%2==1)? "Appuyer sur zéro" : ARRAYCELLS[currentCellToGet];
+		$("#device").html(function () {
+			return ($("#device").html() == "Trackpad")? "Flèches":	"Trackpad";
+		})
+	}	
+	$("#cellToGet").html(function () {
+		return (endArrayCells && deviceTested%2==1)? "Appuyer sur la touche du clavier zéro" : ARRAYCELLS[currentCellToGet];
+	})
 	if (endArrayCells && deviceTested%2==0) { data.loadPopUp("THIS SESSION") }
 
 	//CHRONO
@@ -53,9 +59,13 @@ function keydown(evt) {
 	var keyCode = (evt.keyCode)? evt.keyCode : evt.getKeyCode();
 	switch (keyCode) {
 		//Trackpad
-        case 96: //zéro pavé numérique
+        case 48: //zéro "à"
             if (isStopped){ chrono.chronoStart() } else { chrono.chronoPause(); }
-			if (endArrayCells && deviceTested%2==1) document.getElementById("cellToGet").innerHTML = ARRAYCELLS[currentCellToGet];
+			if (endArrayCells && deviceTested%2==1) $("#cellToGet").html(ARRAYCELLS[currentCellToGet])
+           break;
+		case 96: //zéro "pavé numérique"
+            if (isStopped){ chrono.chronoStart() } else { chrono.chronoPause(); }
+			if (endArrayCells && deviceTested%2==1) $("#cellToGet").html(ARRAYCELLS[currentCellToGet])
            break;
         case 82: //"R"
         	chrono.chronoReset();
@@ -72,6 +82,12 @@ function keydown(evt) {
             break;
         case 65: //a
 			data.loadPopUp("ALL")
+            break;
+        case 90: //z
+			ressenti.loadPopUpRessenti()
+            break;
+        case 69: //z
+			data.loadDataStatTest()
             break;
     }
 }
@@ -90,9 +106,10 @@ function animateScroll (d) {
 	IDEALSPEEDMAX = 200
 	TEMP250 = 110
 	//étalage linéaire entre MIN-MAX et les vitesses idéales 
-	duration = (cellHeight==250)? TEMP250 : (cellHeight-MINCELLHEIGHT)/(MAXCELLHEIGHT-MINCELLHEIGHT) * (IDEALSPEEDMAX-IDEALSPEEDMIN) + IDEALSPEEDMIN
+	duration = (cellHeight==250)? TEMP250 : 
+		(cellHeight-MINCELLHEIGHT)/(MAXCELLHEIGHT-MINCELLHEIGHT) * (IDEALSPEEDMAX-IDEALSPEEDMIN) + IDEALSPEEDMIN
 	isScrolling = true;
-	scroll.top(document.body,document.body.scrollTop+d, { duration: duration, ease: 'inOutQuad' }, function(error, position) {
+	scroll.top(document.body, document.body.scrollTop+d, { duration: duration, ease: 'inOutQuad' }, function(error, position) {
 		isScrolling = false
 	})
 }

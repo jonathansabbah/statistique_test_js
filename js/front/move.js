@@ -25,7 +25,7 @@ function init () {
 	//Initialisation de la BD
 	var IndexedDb = minimongo.IndexedDb;
 	db = new IndexedDb({namespace: "dbStat"}, function() {
-		db.addCollection("donnee");
+		db.addCollection(DONNEE);
 	}, function() { alert("Erreur IndexedDB!"); });
 
 	//Test de Précision

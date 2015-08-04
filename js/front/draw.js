@@ -21,9 +21,7 @@ function drawCells (cellNumber) {
 		cell.rect(offsetX,offsetY+i*cellHeight, CELLWIDTH, cellHeight);
 
 		//Couleur
-		cell.fillStyle = 
-		(cellNumber==-i+Math.floor(TOTALCELLS/2))? 
-		"rgba(245,166,35,100)": "rgba(195,131,26,100)";
+		cell.fillStyle = (cellNumber==-i+Math.floor(TOTALCELLS/2))? "rgba(245,166,35,100)": "rgba(195,131,26,100)";
 		cell.fill();
 
 		//Contours

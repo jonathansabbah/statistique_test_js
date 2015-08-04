@@ -3,12 +3,13 @@ module.exports = {
 	buildChartDistance: buildChartDistance,
 	buildChartSize: buildChartSize,
 	buildChartPrecision: buildChartPrecision,
+	buildChartRessenti, buildChartRessenti,
 }
 
 // —————————————————————————————————————————————————————————————————————————————
 // Chart
 // —————————————————————————————————————————————————————————————————————————————
-function buildChartDistance (array1, array2, mean1, mean2) {
+function buildChartDistance (array1, array2, mean1, mean2, std1, std2) {
 	$(function () {
 		buildChart(
 			'#chartContainer',
@@ -17,13 +18,13 @@ function buildChartDistance (array1, array2, mean1, mean2) {
 			'Performance à taille de cible fixée ('+SIZECELLS.NORMAL+" px)",
 			'Nombre de cases',
 			'Vitesse',
-			"Trackpad : "+mean1+" cases/s — Flèches : "+mean2+" cases/s",
+			"Trackpad : "+mean1+" cases/s (std:"+ std1 +") — Flèches : "+mean2+" cases/s (std:"+ std2 +")",
 			' cases/s'
 			) 
 	});
 }
 
-function buildChartSize (array1, array2, mean1, mean2) {
+function buildChartSize (array1, array2, mean1, mean2, std1, std2) {
 	$(function () {
 		buildChart(
 			'#chartContainerSize',
@@ -32,22 +33,22 @@ function buildChartSize (array1, array2, mean1, mean2) {
 			'Performance à distance fixée ('+DISTANCEFIXEE+" cases)",
 			'Taille des cases',
 			'Vitesse',
-			"Trackpad : "+mean1+" cases/s — Flèches : "+mean2+" cases/s",
+			"Trackpad : "+mean1+" cases/s (std:"+ std1 +") — Flèches : "+mean2+" cases/s (std:"+ std2 +")",
 			' cases/s'
 			) 
 	});
 }
 
-function buildChartPrecision (array1, array2, mean1, mean2) {
+function buildChartPrecision (array1, array2, mean1, mean2, std1, std2) {
 	$(function () {
 		buildChart(
 			'#chartContainerPrecision',
 			array1, 
 			array2,
-			'Précision',
+			'Précision à taille de cible fixée ('+SIZECELLS.NORMAL+' px)',
 			'Nombre de cases',
 			'Temps de validation une fois la case passée',
-			"Trackpad : "+mean1+" ms — Flèches : "+mean2+" ms",
+			"Trackpad : "+mean1+" ms (std:"+ std1 +") — Flèches : "+mean2+" ms (std:"+ std2 +")",
 			' ms'
 			) 
 	});
@@ -67,11 +68,38 @@ function buildChart (chart, serie1, serie2, title, xAxisTitle, yAxisTitle, subti
 	        tooltip: { valueSuffix: unite },
 	        legend: { layout: 'vertical', align: 'right', verticalAlign: 'middle', borderWidth: 0 },
 	        series: [
-	        	{ name: "Trackpad", data: serie1 }, 
-	        	{ name: "Flèches", data: serie2 }
+	        	{ name: "Trackpad", color: 'rgba(15,121,165,1)', data: serie1 }, 
+	        	{ name: "Flèches", color: 'rgba(249,146,46,1)', data: serie2 }
 	    	],
 	    	credits: { enabled: false } 
 	    });
+    });
+}
+
+function buildChartRessenti (serie1, serie2) {
+	 $('#myModalRessenti').on('shown.bs.modal', function() {
+     	$("#chartContainerRessenti").highcharts({
+	        chart: { type: 'bar' },
+	        title: { text: 'Ressenti' },
+	        plotOptions: {
+	            series: { borderWidth: 0, dataLabels: { enabled: true, format: '{point.y:.1f}' } }
+	        },
+	        xAxis: {
+	            categories: [
+	                'Effort mental (1: très important — 5: très faible)',
+	                'Précision (1: très peu précis  — 5: très précis)',
+	                'Rapidité (1: très lent — 5: très rapide)',
+	                'Confort général (1: très inconfortable — 5: très confortable)'
+	            ]  
+	        },
+	        yAxis: { min: 1, max: 5, title: { text: 'Satisfaction' } },
+	        series: [
+	            { name: 'Flèches', color: 'rgba(249,146,46,1)', data: serie2 },
+	            { name: 'Trackpad', color: 'rgba(15,121,165,1)', data: serie1 }
+	        ],
+	      	credits: { enabled: false }
+	       // legend: { layout: 'vertical', align: 'right', verticalAlign: 'middle', borderWidth: 0 }
+ 	    });
     });
 }
 },{}],2:[function(require,module,exports){
@@ -123,7 +151,7 @@ function chronoReset(){
 var ss = require('simple-statistics')
 var numeral = require('numeral')
 var chart = require('./chart')
-module.exports = { loadPopUp: loadPopUp }
+module.exports = { loadPopUp: loadPopUp, loadDataStatTest: loadDataStatTest }
 
 function loadPopUp (from) {
 	loadData(from, function (data) { openPopUp(computeData(data)) })
@@ -133,74 +161,87 @@ function loadData (from, callback) {
 	var loaded = {}
 	if (from == "ALL") {
 		var i = 0
-		allData("TRACKPAD", "distance", function (data) { loaded.trackpadByDistance = data; i++; if (i==4) callback(loaded) })
-		allData("FLECHES", "distance", function (data) { loaded.flechesByDistance = data; i++ ; if (i==4) callback(loaded) })
-		allData("TRACKPAD", "taille", function (data) { loaded.trackpadBySize = data; i++ ; if (i==4) callback(loaded) })
-		allData("FLECHES", "taille", function (data) { loaded.flechesBySize = data; i++; if (i==4) callback(loaded) })
+		allDataDB("TRACKPAD", "distance", function (data) { loaded.trackpadByDistance = data; i++; if (i==4) callback(loaded) })
+		allDataDB("FLECHES", "distance", function (data) { loaded.flechesByDistance = data; i++ ; if (i==4) callback(loaded) })
+		allDataDB("TRACKPAD", "taille", function (data) { loaded.trackpadBySize = data; i++ ; if (i==4) callback(loaded) })
+		allDataDB("FLECHES", "taille", function (data) { loaded.flechesBySize = data; i++; if (i==4) callback(loaded) })
 	} else if (from == "THIS SESSION") {
 		callback({
-			trackpadByDistance: dataResults.TRACKPAD,
-			flechesByDistance: dataResults.FLECHES,
-			trackpadBySize: dataResults.TRACKPAD,
-			flechesBySize: dataResults.FLECHES,
+			trackpadByDistance: dataResults.TRACKPAD.filterBy("distance"),
+			flechesByDistance: dataResults.FLECHES.filterBy("distance"),
+			trackpadBySize: dataResults.TRACKPAD.filterBy("taille"),
+			flechesBySize: dataResults.FLECHES.filterBy("taille"),
 		})
 	}
 }
 
 function computeData (loaded) {
-	var data = {}, mean = {}
+	var data = {}, mean = {}, std = {}
 
 	//Chart 1 : Performance à taille de cible fixée
+	/* MOYENNE */mean.trackpadByDistance = loaded.trackpadByDistance.vitesse().mean()
+	/* STD */std.trackpadByDistance = loaded.trackpadByDistance.vitesse().std()
 	data.trackpadByDistance = loaded.trackpadByDistance.sortBy("distance")
-	mean.trackpadByDistance = data.trackpadByDistance.vitesse().mean()
 	data.trackpadByDistance = data.trackpadByDistance.meanArray("TRACKPAD", "distance")
-	data.precisionTrackpad = data.trackpadByDistance.distancePrecision()
+	/* PRECISION */data.precisionTrackpad = data.trackpadByDistance.distancePrecision()
 	data.trackpadByDistance = data.trackpadByDistance.distanceVitesse()
-	data.trackpadByDistance = data.trackpadByDistance.sort(function (a,b) { return a[0]-b[0] })
-	data.trackpadByDistance = duplicate2average(data.trackpadByDistance) 
-	
+	/* MOYENNE */mean.flechesByDistance = loaded.flechesByDistance.vitesse().mean()
+	/* STD */std.flechesByDistance = loaded.flechesByDistance.vitesse().std()
 	data.flechesByDistance = loaded.flechesByDistance.sortBy("distance")
-	mean.flechesByDistance = data.flechesByDistance.vitesse().mean()
 	data.flechesByDistance = data.flechesByDistance.meanArray("FLECHES", "distance")
-	data.precisionFleches = data.flechesByDistance.distancePrecision()
+	/* PRECISION */data.precisionFleches = data.flechesByDistance.distancePrecision()
 	data.flechesByDistance = data.flechesByDistance.distanceVitesse()
-	data.flechesByDistance = data.flechesByDistance.sort(function (a,b) { return a[0]-b[0] })
-	data.flechesByDistance = duplicate2average(data.flechesByDistance)
 	
 	//Chart 2 : Performance à distance fixée
+	/* MOYENNE */mean.trackpadBySize = loaded.trackpadBySize.vitesse().mean()
+	/* STD */std.trackpadBySize = loaded.trackpadBySize.vitesse().std()
 	data.trackpadBySize = loaded.trackpadBySize.sortBy("taille")
-	mean.trackpadBySize = data.trackpadBySize.vitesse().mean()
 	data.trackpadBySize = data.trackpadBySize.meanArray("TRACKPAD", "taille")
 	data.trackpadBySize = data.trackpadBySize.tailleVitesse()
-	data.trackpadBySize = data.trackpadBySize.sort(function (a,b) { return a[0]-b[0] })
-	data.trackpadBySize = duplicate2average(data.trackpadBySize) 
-	
+	/* MOYENNE */mean.flechesBySize = loaded.flechesBySize.vitesse().mean()
+	/* STD */std.flechesBySize = loaded.flechesBySize.vitesse().std()
 	data.flechesBySize = loaded.flechesBySize.sortBy("taille")
-	mean.flechesBySize = data.flechesBySize.vitesse().mean()
 	data.flechesBySize = data.flechesBySize.meanArray("FLECHES", "taille")
 	data.flechesBySize = data.flechesBySize.tailleVitesse()
-	data.flechesBySize = data.flechesBySize.sort(function (a,b) { return a[0]-b[0] })
-	data.flechesBySize = duplicate2average(data.flechesBySize)
-
-	//Chart 3 : Précision
-	mean.precisionTrackpad = data.precisionTrackpad.precision().mean()
-	data.precisionTrackpad = data.precisionTrackpad.sort(function (a,b) { return a[0]-b[0] })
-
-	mean.precisionFleches = data.precisionFleches.precision().mean()
-	data.precisionFleches = data.precisionFleches.sort(function (a,b) { return a[0]-b[0] })
-
-	return { data: data, mean: mean }
+	
+	// //Chart 3 : Précision
+	/* MOYENNE */mean.precisionTrackpad = data.precisionTrackpad.precision().mean()
+	/* STD */std.precisionTrackpad = data.precisionTrackpad.precision().std()
+	/* MOYENNE */mean.precisionFleches = data.precisionFleches.precision().mean()
+	/* STD */std.precisionFleches = data.precisionFleches.precision().std()
+	return { data: data, mean: mean, std: std }
 }
 
 isPopUpOpened = false;
 function openPopUp (data) {
-	var mean = data.mean, data = data.data
+	var mean = data.mean, std = data.std, data = data.data
 	if (isPopUpOpened) { return; };
 	$("#myModal").modal();
 
-	chart.buildChartDistance(data.trackpadByDistance, data.flechesByDistance, mean.trackpadByDistance, mean.flechesByDistance)
-	chart.buildChartSize(data.trackpadBySize, data.flechesBySize, mean.trackpadBySize, mean.flechesBySize)
-	chart.buildChartPrecision(data.precisionTrackpad, data.precisionFleches, mean.precisionTrackpad, mean.precisionFleches)
+	chart.buildChartDistance(
+		data.trackpadByDistance, 
+		data.flechesByDistance, 
+		mean.trackpadByDistance, 
+		mean.flechesByDistance,
+		std.trackpadByDistance, 
+		std.flechesByDistance
+		)
+	chart.buildChartSize(
+		data.trackpadBySize,
+		data.flechesBySize,
+		mean.trackpadBySize,
+		mean.flechesBySize,
+		std.trackpadBySize,
+		std.flechesBySize
+		)
+	chart.buildChartPrecision(
+		data.precisionTrackpad,
+	 	data.precisionFleches,
+	 	mean.precisionTrackpad,
+	 	mean.precisionFleches,
+	 	std.precisionTrackpad,
+	 	std.precisionFleches
+	 	)
 
 	isPopUpOpened = true;
 	$('#myModal').on('hidden.bs.modal', function (e) { isPopUpOpened = false })
@@ -209,10 +250,10 @@ function openPopUp (data) {
 // —————————————————————————————————————————————————————————————————————————————
 // Data 
 // —————————————————————————————————————————————————————————————————————————————
-	function allData (device, xAxis, callback) {
+	function allDataDB (device, xAxis, callback) {
 		//data : tableau de tous les objets { temps, distance, taille, précision } de chaque test 
 		// à taille fixee ou à distance fixee
-		db.donnee._findFetch({ device: device },{}, function (res) {
+		db[DONNEE]._findFetch({ device: device },{}, function (res) {
 			data = []
 		    res.forEach(function (value) {
 				value.dataResults.forEach(function (results) {
@@ -220,11 +261,21 @@ function openPopUp (data) {
 		    		if (xAxis == "taille" && results.distance == DISTANCEFIXEE) { data.push(results) };
 		    	})
 			})
+
 			console.log("Données "+device+" :"+ data.length)
 			callback(data)
 		})
 	}
 
+	Array.prototype.filterBy = function (xAxis) {
+		data = []
+		this.forEach(function (value) {
+			if (xAxis == "distance" && value.taille == SIZECELLS.NORMAL) { data.push(value) }
+			if (xAxis == "taille" && value.distance == DISTANCEFIXEE) { data.push(value) }
+		})
+		return data
+	}
+	
 	Array.prototype.sortBy = function (xAxis) {
 		//trie par distance ou par taille
 		return this.sort(function (a,b) { 
@@ -263,23 +314,6 @@ function openPopUp (data) {
 	 		i=i+j
 	 	}
 	 	return finalData
-	}
-
-	function duplicate2average (array) {
-	/// [[0,1], [0,3], [4,1]] --> [[0,2], [4,1]]
-	//	Requiert une liste triée par x et [pas de doublon || des doublons simples]
-		var data = []
-		for (var i = 0; i <= array.length - 1;) {
-			if (i == array.length - 1) { data.push(array[i]) } 
-			else if (array[i][0] != array[i+1][0]){ data.push(array[i]) } 
-			else {
-				average = (array[i][1] + array[i+1][1])/2
-				data.push([array[i][0], average])
-				i++;
-			}
-			i++
-		}
-		return data	
 	}
 
 // —————————————————————————————————————————————————————————————————————————————
@@ -340,7 +374,82 @@ function openPopUp (data) {
 		return numeral(ss.standard_deviation(this)).format('0.00')
 	}
 
-},{"./chart":1,"numeral":28,"simple-statistics":29}],4:[function(require,module,exports){
+	Array.prototype.normalSize = function (){
+		var data = []
+		this.forEach(function (value) {
+			if (value.taille == SIZECELLS.NORMAL) { data.push(value) }
+		})
+		return data
+	}
+
+// —————————————————————————————————————————————————————————————————————————————
+// TESTS D'HYPOTHESES 
+// —————————————————————————————————————————————————————————————————————————————
+	function loadDataStatTest (argument) {
+		allDataArraySpeed(function (data) { computeDataStatTest(data) })
+	}
+
+	function allDataArraySpeed (callback) {
+	// data.T : tableau des vitesses moyennes avec trackpad de chaque testeurs 
+	// data.F : tableau des vitesses moyennes avec flèche de chaque testeurs 
+		data = { T:[], F:[] }
+		db[DONNEE]._findFetch({},{}, function (res) {
+		    res.forEach(function (value) {
+	    			if (value.device == "TRACKPAD") { data.T.push(value.dataResults.normalSize().vitesse().mean()) };
+	    			if (value.device == "FLECHES") { data.F.push(value.dataResults.normalSize().vitesse().mean()) };
+	    	})
+			callback(data)
+		})
+	}
+
+	function computeDataStatTest (data) {
+		for (var i = 0; i <= data.T.length - 1; i++) {
+			if (i==0) { str = "x<-sort(c(" + data.T[i]}
+			else { str = str +"," + data.T[i] }
+		};
+		str = str +"))"
+		console.log(data.F.length)
+		// test d'hypothèse
+
+	}
+
+
+// —————————————————————————————————————————————————————————————————————————————
+// GESTION DE LA BD DANS CHROME 
+// —————————————————————————————————————————————————————————————————————————————
+	//A coller dans la console de Chrome en cas de valeur aberrante
+
+	function removeTheLessPreciseSerie () {
+		db[DONNEE]._findFetch({},{}, function (res) {
+			var precisionMax = 0
+			var IDprecisionMax = 0
+		    res.forEach(function (value) {
+				value.dataResults.forEach(function (results) {
+	    			if (results.precision>precisionMax) { 
+	    				precisionMax = results.precision
+	    				IDprecisionMax = value._id
+	    				console.log(precisionMax)
+	    			}
+		    	})
+			})
+			db[DONNEE].remove(IDprecisionMax,function(){},function(){})
+		})
+	}
+
+	function removeASeriePerformanceBySize (size) {
+		db[DONNEE]._findFetch({},{}, function (res) {
+		    res.forEach(function (value) {
+				value.dataResults.forEach(function (results) {
+					if (results.taille == size) { 
+	    				console.log(results)
+						db[DONNEE].remove(value._id,function(){},function(){})
+		    		}
+		    	})
+			})
+		})
+	}
+
+},{"./chart":1,"numeral":29,"simple-statistics":30}],4:[function(require,module,exports){
 module.exports = {
 	drawCells: drawCells,
 }
@@ -364,9 +473,7 @@ function drawCells (cellNumber) {
 		cell.rect(offsetX,offsetY+i*cellHeight, CELLWIDTH, cellHeight);
 
 		//Couleur
-		cell.fillStyle = 
-		(cellNumber==-i+Math.floor(TOTALCELLS/2))? 
-		"rgba(245,166,35,100)": "rgba(195,131,26,100)";
+		cell.fillStyle = (cellNumber==-i+Math.floor(TOTALCELLS/2))? "rgba(245,166,35,100)": "rgba(195,131,26,100)";
 		cell.fill();
 
 		//Contours
@@ -394,6 +501,7 @@ var chrono = require('./chrono')
 var scroll = require('scroll')
 var data = require('./data')
 var precision = require('./precision')
+var ressenti = require('./ressenti')
 module.exports = { keydown: keydown }
 
 // —————————————————————————————————————————————————————————————————————————————
@@ -416,9 +524,10 @@ function clic (device) {
 	currentCellToGet = (currentCellToGet+1) % ARRAYCELLS.length
 	cellHeightIndex = (cellHeightIndex+1) % ARRAYSIZECELLS.length
 	cellHeight = ARRAYSIZECELLS[cellHeightIndex]
+	
 	if (endArrayCells) { deviceTested++ };
 	if (endArrayCells) { 
-		db.donnee.upsert({
+		db[DONNEE].upsert({
 			device: device, 
 			orientation: "vertical",
 			date: new Date(),
@@ -427,13 +536,17 @@ function clic (device) {
 	}
 
 	//VUE
-	document.body.scrollTop = Math.floor(TOTALCELLS/2)*cellHeight //Retour au milieu
+	setTimeout(function () {
+		document.body.scrollTop = Math.floor(TOTALCELLS/2)*cellHeight //Retour au milieu
+	}, 5)
 	if (endArrayCells) {
-		document.getElementById("device").innerHTML =
-		(document.getElementById("device").innerHTML == "Trackpad")? "Flèches":	"Trackpad";
-	};	
-	document.getElementById("cellToGet").innerHTML = 
-		(endArrayCells && deviceTested%2==1)? "Appuyer sur zéro" : ARRAYCELLS[currentCellToGet];
+		$("#device").html(function () {
+			return ($("#device").html() == "Trackpad")? "Flèches":	"Trackpad";
+		})
+	}	
+	$("#cellToGet").html(function () {
+		return (endArrayCells && deviceTested%2==1)? "Appuyer sur la touche du clavier zéro" : ARRAYCELLS[currentCellToGet];
+	})
 	if (endArrayCells && deviceTested%2==0) { data.loadPopUp("THIS SESSION") }
 
 	//CHRONO
@@ -445,9 +558,13 @@ function keydown(evt) {
 	var keyCode = (evt.keyCode)? evt.keyCode : evt.getKeyCode();
 	switch (keyCode) {
 		//Trackpad
-        case 96: //zéro pavé numérique
+        case 48: //zéro "à"
             if (isStopped){ chrono.chronoStart() } else { chrono.chronoPause(); }
-			if (endArrayCells && deviceTested%2==1) document.getElementById("cellToGet").innerHTML = ARRAYCELLS[currentCellToGet];
+			if (endArrayCells && deviceTested%2==1) $("#cellToGet").html(ARRAYCELLS[currentCellToGet])
+           break;
+		case 96: //zéro "pavé numérique"
+            if (isStopped){ chrono.chronoStart() } else { chrono.chronoPause(); }
+			if (endArrayCells && deviceTested%2==1) $("#cellToGet").html(ARRAYCELLS[currentCellToGet])
            break;
         case 82: //"R"
         	chrono.chronoReset();
@@ -464,6 +581,12 @@ function keydown(evt) {
             break;
         case 65: //a
 			data.loadPopUp("ALL")
+            break;
+        case 90: //z
+			ressenti.loadPopUpRessenti()
+            break;
+        case 69: //z
+			data.loadDataStatTest()
             break;
     }
 }
@@ -482,9 +605,10 @@ function animateScroll (d) {
 	IDEALSPEEDMAX = 200
 	TEMP250 = 110
 	//étalage linéaire entre MIN-MAX et les vitesses idéales 
-	duration = (cellHeight==250)? TEMP250 : (cellHeight-MINCELLHEIGHT)/(MAXCELLHEIGHT-MINCELLHEIGHT) * (IDEALSPEEDMAX-IDEALSPEEDMIN) + IDEALSPEEDMIN
+	duration = (cellHeight==250)? TEMP250 : 
+		(cellHeight-MINCELLHEIGHT)/(MAXCELLHEIGHT-MINCELLHEIGHT) * (IDEALSPEEDMAX-IDEALSPEEDMIN) + IDEALSPEEDMIN
 	isScrolling = true;
-	scroll.top(document.body,document.body.scrollTop+d, { duration: duration, ease: 'inOutQuad' }, function(error, position) {
+	scroll.top(document.body, document.body.scrollTop+d, { duration: duration, ease: 'inOutQuad' }, function(error, position) {
 		isScrolling = false
 	})
 }
@@ -494,7 +618,7 @@ function lastResults (dataArray) {
 	var firstIndex = (dataArray.length/size-1)*size
 	return dataArray.slice(firstIndex,firstIndex+size)
 }
-},{"./chrono":2,"./data":3,"./precision":7,"scroll":24}],6:[function(require,module,exports){
+},{"./chrono":2,"./data":3,"./precision":7,"./ressenti":8,"scroll":25}],6:[function(require,module,exports){
 var draw = require('./draw');
 var input = require('./input');
 var precision = require("./precision");
@@ -522,7 +646,7 @@ function init () {
 	//Initialisation de la BD
 	var IndexedDb = minimongo.IndexedDb;
 	db = new IndexedDb({namespace: "dbStat"}, function() {
-		db.addCollection("donnee");
+		db.addCollection(DONNEE);
 	}, function() { alert("Erreur IndexedDB!"); });
 
 	//Test de Précision
@@ -596,7 +720,7 @@ Array.prototype.contains = function(obj) {
     while (i--) { if (this[i] === obj) { return true; } }
     return false;
 }
-},{"./draw":4,"./input":5,"./precision":7,"minimongo":8}],7:[function(require,module,exports){
+},{"./draw":4,"./input":5,"./precision":7,"minimongo":9}],7:[function(require,module,exports){
 module.exports = { 
 	precisionCheck: precisionCheck,
 	saveAndResetPrecisionTime: saveAndResetPrecisionTime,
@@ -624,6 +748,67 @@ function saveAndResetPrecisionTime () {
 	}
 }
 },{}],8:[function(require,module,exports){
+var ss = require('simple-statistics')
+var numeral = require('numeral')
+var chart = require('./chart')
+module.exports = { loadPopUpRessenti: loadPopUpRessenti }
+
+function loadPopUpRessenti () {
+	openPopUp(computeData(loadData()))
+}
+
+function loadData () {
+	var effortMental = {}, precision = {}, rapidite = {}, confort = {}
+	
+	effortMental.trackpad = [3,4,4,4,5,5,5,5,4,4]
+	precision.trackpad = [5,4,3,3,4,4,4,3,2,2]
+	rapidite.trackpad = [5,4,5,3,4,4,5,5,3,3]
+	confort.trackpad = [5,3,4,4,5,4,5,4,4,3]
+
+	effortMental.fleches = [5,4,5,5,5,5,5,5,4,5]
+	rapidite.fleches = [2,2,3,1,1,2,2,2,3,3]
+	precision.fleches = [5,3,5,4,4,4,5,5,4,5]
+	confort.fleches = [1,1,3,1,2,2,2,3,2,3]
+	
+	return {effortMental : effortMental, precision : precision, rapidite: rapidite, confort : confort}
+}
+
+function computeData (data) {
+	var trackpadMeans = [
+		data.effortMental.trackpad.mean(),
+		data.precision.trackpad.mean(),
+		data.rapidite.trackpad.mean(),
+		data.confort.trackpad.mean(),
+	]
+	var flechesMeans = [
+		data.effortMental.fleches.mean(),
+		data.precision.fleches.mean(),
+		data.rapidite.fleches.mean(),
+		data.confort.fleches.mean(),
+	]
+	return { trackpadMeans: trackpadMeans, flechesMeans: flechesMeans}
+}
+
+isPopUpOpenedRessenti = false;
+function openPopUp (data) {
+	if (isPopUpOpenedRessenti) { return; };
+	$("#myModalRessenti").modal();
+	chart.buildChartRessenti(data.trackpadMeans, data.flechesMeans)
+	isPopUpOpenedRessenti = true;
+	$('#myModalRessenti').on('hidden.bs.modal', function (e) { isPopUpOpenedRessenti = false })
+}
+
+// —————————————————————————————————————————————————————————————————————————————
+// FONCTIONS ANNEXES 
+// —————————————————————————————————————————————————————————————————————————————
+	Array.prototype.mean = function () {
+		return Number(numeral(ss.mean(this)).format('0.00'))
+	}
+
+	Array.prototype.std = function () {
+		return Number(numeral(ss.standard_deviation(this)).format('0.00'))
+	}
+},{"./chart":1,"numeral":29,"simple-statistics":30}],9:[function(require,module,exports){
 exports.MemoryDb = require('./lib/MemoryDb');
 exports.LocalStorageDb = require('./lib/LocalStorageDb');
 exports.IndexedDb = require('./lib/IndexedDb');
@@ -632,7 +817,7 @@ exports.RemoteDb = require('./lib/RemoteDb');
 exports.HybridDb = require('./lib/HybridDb');
 exports.utils = require('./lib/utils');
 
-},{"./lib/HybridDb":10,"./lib/IndexedDb":11,"./lib/LocalStorageDb":12,"./lib/MemoryDb":13,"./lib/RemoteDb":14,"./lib/WebSQLDb":15,"./lib/utils":18}],9:[function(require,module,exports){
+},{"./lib/HybridDb":11,"./lib/IndexedDb":12,"./lib/LocalStorageDb":13,"./lib/MemoryDb":14,"./lib/RemoteDb":15,"./lib/WebSQLDb":16,"./lib/utils":19}],10:[function(require,module,exports){
 var _ = require('lodash');
 
 EJSON = {}; // Global!
@@ -960,7 +1145,7 @@ EJSON.clone = function (v) {
 
 module.exports = EJSON;
 
-},{"lodash":23}],10:[function(require,module,exports){
+},{"lodash":24}],11:[function(require,module,exports){
 
 /*
 
@@ -1275,7 +1460,7 @@ HybridCollection = (function() {
 
 })();
 
-},{"./utils":18,"lodash":23}],11:[function(require,module,exports){
+},{"./utils":19,"lodash":24}],12:[function(require,module,exports){
 var Collection, IDBStore, IndexedDb, async, compileSort, processFind, utils, _;
 
 _ = require('lodash');
@@ -1726,7 +1911,7 @@ Collection = (function() {
 
 })();
 
-},{"./selector":17,"./utils":18,"async":19,"idb-wrapper":21,"lodash":23}],12:[function(require,module,exports){
+},{"./selector":18,"./utils":19,"async":20,"idb-wrapper":22,"lodash":24}],13:[function(require,module,exports){
 var Collection, LocalStorageDb, compileSort, processFind, utils, _;
 
 _ = require('lodash');
@@ -2025,7 +2210,7 @@ Collection = (function() {
 
 })();
 
-},{"./selector":17,"./utils":18,"lodash":23}],13:[function(require,module,exports){
+},{"./selector":18,"./utils":19,"lodash":24}],14:[function(require,module,exports){
 var Collection, MemoryDb, compileSort, processFind, utils, _;
 
 _ = require('lodash');
@@ -2235,7 +2420,7 @@ Collection = (function() {
 
 })();
 
-},{"./selector":17,"./utils":18,"lodash":23}],14:[function(require,module,exports){
+},{"./selector":18,"./utils":19,"lodash":24}],15:[function(require,module,exports){
 var $, Collection, RemoteDb, async, jQueryHttpClient, utils, _;
 
 _ = require('lodash');
@@ -2431,7 +2616,7 @@ Collection = (function() {
 
 })();
 
-},{"./jQueryHttpClient":16,"./utils":18,"async":19,"jquery":22,"lodash":23}],15:[function(require,module,exports){
+},{"./jQueryHttpClient":17,"./utils":19,"async":20,"jquery":23,"lodash":24}],16:[function(require,module,exports){
 var Collection, WebSQLDb, async, compileSort, doNothing, processFind, utils, _;
 
 _ = require('lodash');
@@ -2854,7 +3039,7 @@ Collection = (function() {
 
 })();
 
-},{"./selector":17,"./utils":18,"async":19,"lodash":23}],16:[function(require,module,exports){
+},{"./selector":18,"./utils":19,"async":20,"lodash":24}],17:[function(require,module,exports){
 module.exports = function(method, url, params, data, success, error) {
   var fullUrl, req;
   fullUrl = url + "?" + $.param(params);
@@ -2884,7 +3069,7 @@ module.exports = function(method, url, params, data, success, error) {
   });
 };
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 /*
 ========================================
 Meteor is licensed under the MIT License
@@ -3621,7 +3806,7 @@ LocalCollection._compileSort = function (spec) {
 exports.compileDocumentSelector = compileDocumentSelector;
 exports.compileSort = LocalCollection._compileSort;
 
-},{"./EJSON":9,"lodash":23}],18:[function(require,module,exports){
+},{"./EJSON":10,"lodash":24}],19:[function(require,module,exports){
 var async, bowser, compileDocumentSelector, compileSort, deg2rad, getDistanceFromLatLngInM, isLocalStorageSupported, pointInPolygon, processGeoIntersectsOperator, processNearOperator, _;
 
 _ = require('lodash');
@@ -3923,7 +4108,7 @@ exports.regularizeUpsert = function(docs, bases, success, error) {
   return [items, success, error];
 };
 
-},{"./HybridDb":10,"./IndexedDb":11,"./LocalStorageDb":12,"./MemoryDb":13,"./WebSQLDb":15,"./selector":17,"async":19,"bowser":20,"lodash":23}],19:[function(require,module,exports){
+},{"./HybridDb":11,"./IndexedDb":12,"./LocalStorageDb":13,"./MemoryDb":14,"./WebSQLDb":16,"./selector":18,"async":20,"bowser":21,"lodash":24}],20:[function(require,module,exports){
 (function (process){
 /*!
  * async
@@ -4985,7 +5170,7 @@ exports.regularizeUpsert = function(docs, bases, success, error) {
 }());
 
 }).call(this,require('_process'))
-},{"_process":30}],20:[function(require,module,exports){
+},{"_process":31}],21:[function(require,module,exports){
 /*!
   * Bowser - a browser detector
   * https://github.com/ded/bowser
@@ -5263,7 +5448,7 @@ exports.regularizeUpsert = function(docs, bases, success, error) {
   return bowser
 });
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 /*global window:false, self:false, define:false, module:false */
 
 /**
@@ -6610,7 +6795,7 @@ exports.regularizeUpsert = function(docs, bases, success, error) {
 
 }, this);
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v2.1.4
  * http://jquery.com/
@@ -15822,7 +16007,7 @@ return jQuery;
 
 }));
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -22612,7 +22797,7 @@ return jQuery;
 }.call(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],24:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 var raf = require('raf-component')
 var ease = require('ease-component')
 var listener = require('eventlistener')
@@ -22687,7 +22872,7 @@ module.exports = {
   }
 }
 
-},{"ease-component":25,"eventlistener":26,"raf-component":27}],25:[function(require,module,exports){
+},{"ease-component":26,"eventlistener":27,"raf-component":28}],26:[function(require,module,exports){
 
 // easing functions from "Tween.js"
 
@@ -22859,7 +23044,7 @@ exports['in-bounce'] = exports.inBounce;
 exports['out-bounce'] = exports.outBounce;
 exports['in-out-bounce'] = exports.inOutBounce;
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 (function(root,factory){
     if (typeof define === 'function' && define.amd) {
         define(factory);
@@ -22884,7 +23069,7 @@ exports['in-out-bounce'] = exports.inOutBounce;
 		remove: wrap('removeEventListener', 'detachEvent')
 	};
 }));
-},{}],27:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 /**
  * Expose `requestAnimationFrame()`.
  */
@@ -22924,7 +23109,7 @@ exports.cancel = function(id){
   cancel.call(window, id);
 };
 
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 /*!
  * numeral.js
  * version : 1.5.3
@@ -23605,7 +23790,7 @@ exports.cancel = function(id){
     }
 }).call(this);
 
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 'use strict';
 // # simple-statistics
 //
@@ -25181,7 +25366,7 @@ exports.cancel = function(id){
 
 })(this);
 
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};

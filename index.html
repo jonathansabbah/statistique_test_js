@@ -10,15 +10,18 @@
 		<link href="css/bootstrap.min.css" rel="stylesheet">
 		<link rel="stylesheet" href="./css/style.css">
 		<script type="text/javascript">
-			var FPS = 200, CELLWIDTH = 445, TOTALCELLS = 51
-			var PRES = 5, LOIN = 10, TRES_LOIN = 15
-			var IGNORED = 1 //on ignore les premiers éléments
-			var TOTALCELLSTOGET = 20
+			var FPS = 150
+			var TOTALCELLS = 51
+			var TOTALCELLSTOGET = 12
+			var IGNORED = 1
+			var SIZECELLS = { PETIT: 100, NORMAL: 250, GRAND:500 }
+			var CELLWIDTH = 445
+			// var DONNEE = "donneesCollectives"
+			var DONNEE = "donnee" 
+
 			var ARRAYCELLS
 			var ARRAYSIZECELLS
-			var SIZECELLS = { PETIT: 100, NORMAL: 250, GRAND:500 }
 			var DISTANCEFIXEE
-
 			var cellNumber = 1;
 			var currentCellToGet = 0;
 			var dataResults = {TRACKPAD : [], FLECHES : []};
@@ -55,15 +58,30 @@
 		  </div>
 		</div>
 
+		<div class="container">
+		  <!-- Modal -->
+		  <div class="modal fade" id="myModalRessenti" role="dialog">
+		    <div class="modal-dialog modal-lg">
+		      <!-- Modal content-->
+		      <div class="modal-content">
+		        <div class="modal-header">
+		          <button type="button" class="close" data-dismiss="modal">&times;</button>
+		          <h4 class="modal-title">Résultats</h4>
+		        </div>   
+		        <div id="chartContainerRessenti" ></div>
+		        <div class="modal-footer"></div>
+		      </div>
+		    </div>
+		  </div>
+		</div>
+
 		<div id="topBar">
 				<h1 id="chronotime" class="col-md-4 col-xs-4" >00:00</h1>
 				<h1 class="col-md-4 col-xs-4" id="cellToGet">10</h1>
 				<h1 class="col-md-4 col-xs-4" id="device">Trackpad</h1>
 		    </div>
 
-		<div id="vertical">
-			<canvas id="cells"/>
-	 	</div>
+		<div id="vertical"><canvas id="cells"/></div>
 
 		<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>

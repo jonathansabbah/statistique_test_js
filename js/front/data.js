@@ -1,7 +1,7 @@
 var ss = require('simple-statistics')
 var numeral = require('numeral')
 var chart = require('./chart')
-module.exports = { loadPopUp: loadPopUp }
+module.exports = { loadPopUp: loadPopUp, loadDataStatTest: loadDataStatTest }
 
 function loadPopUp (from) {
 	loadData(from, function (data) { openPopUp(computeData(data)) })
@@ -11,74 +11,87 @@ function loadData (from, callback) {
 	var loaded = {}
 	if (from == "ALL") {
 		var i = 0
-		allData("TRACKPAD", "distance", function (data) { loaded.trackpadByDistance = data; i++; if (i==4) callback(loaded) })
-		allData("FLECHES", "distance", function (data) { loaded.flechesByDistance = data; i++ ; if (i==4) callback(loaded) })
-		allData("TRACKPAD", "taille", function (data) { loaded.trackpadBySize = data; i++ ; if (i==4) callback(loaded) })
-		allData("FLECHES", "taille", function (data) { loaded.flechesBySize = data; i++; if (i==4) callback(loaded) })
+		allDataDB("TRACKPAD", "distance", function (data) { loaded.trackpadByDistance = data; i++; if (i==4) callback(loaded) })
+		allDataDB("FLECHES", "distance", function (data) { loaded.flechesByDistance = data; i++ ; if (i==4) callback(loaded) })
+		allDataDB("TRACKPAD", "taille", function (data) { loaded.trackpadBySize = data; i++ ; if (i==4) callback(loaded) })
+		allDataDB("FLECHES", "taille", function (data) { loaded.flechesBySize = data; i++; if (i==4) callback(loaded) })
 	} else if (from == "THIS SESSION") {
 		callback({
-			trackpadByDistance: dataResults.TRACKPAD,
-			flechesByDistance: dataResults.FLECHES,
-			trackpadBySize: dataResults.TRACKPAD,
-			flechesBySize: dataResults.FLECHES,
+			trackpadByDistance: dataResults.TRACKPAD.filterBy("distance"),
+			flechesByDistance: dataResults.FLECHES.filterBy("distance"),
+			trackpadBySize: dataResults.TRACKPAD.filterBy("taille"),
+			flechesBySize: dataResults.FLECHES.filterBy("taille"),
 		})
 	}
 }
 
 function computeData (loaded) {
-	var data = {}, mean = {}
+	var data = {}, mean = {}, std = {}
 
 	//Chart 1 : Performance à taille de cible fixée
+	/* MOYENNE */mean.trackpadByDistance = loaded.trackpadByDistance.vitesse().mean()
+	/* STD */std.trackpadByDistance = loaded.trackpadByDistance.vitesse().std()
 	data.trackpadByDistance = loaded.trackpadByDistance.sortBy("distance")
-	mean.trackpadByDistance = data.trackpadByDistance.vitesse().mean()
 	data.trackpadByDistance = data.trackpadByDistance.meanArray("TRACKPAD", "distance")
-	data.precisionTrackpad = data.trackpadByDistance.distancePrecision()
+	/* PRECISION */data.precisionTrackpad = data.trackpadByDistance.distancePrecision()
 	data.trackpadByDistance = data.trackpadByDistance.distanceVitesse()
-	data.trackpadByDistance = data.trackpadByDistance.sort(function (a,b) { return a[0]-b[0] })
-	data.trackpadByDistance = duplicate2average(data.trackpadByDistance) 
-	
+	/* MOYENNE */mean.flechesByDistance = loaded.flechesByDistance.vitesse().mean()
+	/* STD */std.flechesByDistance = loaded.flechesByDistance.vitesse().std()
 	data.flechesByDistance = loaded.flechesByDistance.sortBy("distance")
-	mean.flechesByDistance = data.flechesByDistance.vitesse().mean()
 	data.flechesByDistance = data.flechesByDistance.meanArray("FLECHES", "distance")
-	data.precisionFleches = data.flechesByDistance.distancePrecision()
+	/* PRECISION */data.precisionFleches = data.flechesByDistance.distancePrecision()
 	data.flechesByDistance = data.flechesByDistance.distanceVitesse()
-	data.flechesByDistance = data.flechesByDistance.sort(function (a,b) { return a[0]-b[0] })
-	data.flechesByDistance = duplicate2average(data.flechesByDistance)
 	
 	//Chart 2 : Performance à distance fixée
+	/* MOYENNE */mean.trackpadBySize = loaded.trackpadBySize.vitesse().mean()
+	/* STD */std.trackpadBySize = loaded.trackpadBySize.vitesse().std()
 	data.trackpadBySize = loaded.trackpadBySize.sortBy("taille")
-	mean.trackpadBySize = data.trackpadBySize.vitesse().mean()
 	data.trackpadBySize = data.trackpadBySize.meanArray("TRACKPAD", "taille")
 	data.trackpadBySize = data.trackpadBySize.tailleVitesse()
-	data.trackpadBySize = data.trackpadBySize.sort(function (a,b) { return a[0]-b[0] })
-	data.trackpadBySize = duplicate2average(data.trackpadBySize) 
-	
+	/* MOYENNE */mean.flechesBySize = loaded.flechesBySize.vitesse().mean()
+	/* STD */std.flechesBySize = loaded.flechesBySize.vitesse().std()
 	data.flechesBySize = loaded.flechesBySize.sortBy("taille")
-	mean.flechesBySize = data.flechesBySize.vitesse().mean()
 	data.flechesBySize = data.flechesBySize.meanArray("FLECHES", "taille")
 	data.flechesBySize = data.flechesBySize.tailleVitesse()
-	data.flechesBySize = data.flechesBySize.sort(function (a,b) { return a[0]-b[0] })
-	data.flechesBySize = duplicate2average(data.flechesBySize)
-
-	//Chart 3 : Précision
-	mean.precisionTrackpad = data.precisionTrackpad.precision().mean()
-	data.precisionTrackpad = data.precisionTrackpad.sort(function (a,b) { return a[0]-b[0] })
-
-	mean.precisionFleches = data.precisionFleches.precision().mean()
-	data.precisionFleches = data.precisionFleches.sort(function (a,b) { return a[0]-b[0] })
-
-	return { data: data, mean: mean }
+	
+	// //Chart 3 : Précision
+	/* MOYENNE */mean.precisionTrackpad = data.precisionTrackpad.precision().mean()
+	/* STD */std.precisionTrackpad = data.precisionTrackpad.precision().std()
+	/* MOYENNE */mean.precisionFleches = data.precisionFleches.precision().mean()
+	/* STD */std.precisionFleches = data.precisionFleches.precision().std()
+	return { data: data, mean: mean, std: std }
 }
 
 isPopUpOpened = false;
 function openPopUp (data) {
-	var mean = data.mean, data = data.data
+	var mean = data.mean, std = data.std, data = data.data
 	if (isPopUpOpened) { return; };
 	$("#myModal").modal();
 
-	chart.buildChartDistance(data.trackpadByDistance, data.flechesByDistance, mean.trackpadByDistance, mean.flechesByDistance)
-	chart.buildChartSize(data.trackpadBySize, data.flechesBySize, mean.trackpadBySize, mean.flechesBySize)
-	chart.buildChartPrecision(data.precisionTrackpad, data.precisionFleches, mean.precisionTrackpad, mean.precisionFleches)
+	chart.buildChartDistance(
+		data.trackpadByDistance, 
+		data.flechesByDistance, 
+		mean.trackpadByDistance, 
+		mean.flechesByDistance,
+		std.trackpadByDistance, 
+		std.flechesByDistance
+		)
+	chart.buildChartSize(
+		data.trackpadBySize,
+		data.flechesBySize,
+		mean.trackpadBySize,
+		mean.flechesBySize,
+		std.trackpadBySize,
+		std.flechesBySize
+		)
+	chart.buildChartPrecision(
+		data.precisionTrackpad,
+	 	data.precisionFleches,
+	 	mean.precisionTrackpad,
+	 	mean.precisionFleches,
+	 	std.precisionTrackpad,
+	 	std.precisionFleches
+	 	)
 
 	isPopUpOpened = true;
 	$('#myModal').on('hidden.bs.modal', function (e) { isPopUpOpened = false })
@@ -87,10 +100,10 @@ function openPopUp (data) {
 // —————————————————————————————————————————————————————————————————————————————
 // Data 
 // —————————————————————————————————————————————————————————————————————————————
-	function allData (device, xAxis, callback) {
+	function allDataDB (device, xAxis, callback) {
 		//data : tableau de tous les objets { temps, distance, taille, précision } de chaque test 
 		// à taille fixee ou à distance fixee
-		db.donnee._findFetch({ device: device },{}, function (res) {
+		db[DONNEE]._findFetch({ device: device },{}, function (res) {
 			data = []
 		    res.forEach(function (value) {
 				value.dataResults.forEach(function (results) {
@@ -98,11 +111,21 @@ function openPopUp (data) {
 		    		if (xAxis == "taille" && results.distance == DISTANCEFIXEE) { data.push(results) };
 		    	})
 			})
+
 			console.log("Données "+device+" :"+ data.length)
 			callback(data)
 		})
 	}
 
+	Array.prototype.filterBy = function (xAxis) {
+		data = []
+		this.forEach(function (value) {
+			if (xAxis == "distance" && value.taille == SIZECELLS.NORMAL) { data.push(value) }
+			if (xAxis == "taille" && value.distance == DISTANCEFIXEE) { data.push(value) }
+		})
+		return data
+	}
+	
 	Array.prototype.sortBy = function (xAxis) {
 		//trie par distance ou par taille
 		return this.sort(function (a,b) { 
@@ -141,23 +164,6 @@ function openPopUp (data) {
 	 		i=i+j
 	 	}
 	 	return finalData
-	}
-
-	function duplicate2average (array) {
-	/// [[0,1], [0,3], [4,1]] --> [[0,2], [4,1]]
-	//	Requiert une liste triée par x et [pas de doublon || des doublons simples]
-		var data = []
-		for (var i = 0; i <= array.length - 1;) {
-			if (i == array.length - 1) { data.push(array[i]) } 
-			else if (array[i][0] != array[i+1][0]){ data.push(array[i]) } 
-			else {
-				average = (array[i][1] + array[i+1][1])/2
-				data.push([array[i][0], average])
-				i++;
-			}
-			i++
-		}
-		return data	
 	}
 
 // —————————————————————————————————————————————————————————————————————————————
@@ -216,4 +222,79 @@ function openPopUp (data) {
 
 	Array.prototype.std = function () {
 		return numeral(ss.standard_deviation(this)).format('0.00')
+	}
+
+	Array.prototype.normalSize = function (){
+		var data = []
+		this.forEach(function (value) {
+			if (value.taille == SIZECELLS.NORMAL) { data.push(value) }
+		})
+		return data
+	}
+
+// —————————————————————————————————————————————————————————————————————————————
+// TESTS D'HYPOTHESES 
+// —————————————————————————————————————————————————————————————————————————————
+	function loadDataStatTest (argument) {
+		allDataArraySpeed(function (data) { computeDataStatTest(data) })
+	}
+
+	function allDataArraySpeed (callback) {
+	// data.T : tableau des vitesses moyennes avec trackpad de chaque testeurs 
+	// data.F : tableau des vitesses moyennes avec flèche de chaque testeurs 
+		data = { T:[], F:[] }
+		db[DONNEE]._findFetch({},{}, function (res) {
+		    res.forEach(function (value) {
+	    			if (value.device == "TRACKPAD") { data.T.push(value.dataResults.normalSize().vitesse().mean()) };
+	    			if (value.device == "FLECHES") { data.F.push(value.dataResults.normalSize().vitesse().mean()) };
+	    	})
+			callback(data)
+		})
+	}
+
+	function computeDataStatTest (data) {
+		for (var i = 0; i <= data.T.length - 1; i++) {
+			if (i==0) { str = "x<-sort(c(" + data.T[i]}
+			else { str = str +"," + data.T[i] }
+		};
+		str = str +"))"
+		console.log(data.F.length)
+		// test d'hypothèse
+
+	}
+
+
+// —————————————————————————————————————————————————————————————————————————————
+// GESTION DE LA BD DANS CHROME 
+// —————————————————————————————————————————————————————————————————————————————
+	//A coller dans la console de Chrome en cas de valeur aberrante
+
+	function removeTheLessPreciseSerie () {
+		db[DONNEE]._findFetch({},{}, function (res) {
+			var precisionMax = 0
+			var IDprecisionMax = 0
+		    res.forEach(function (value) {
+				value.dataResults.forEach(function (results) {
+	    			if (results.precision>precisionMax) { 
+	    				precisionMax = results.precision
+	    				IDprecisionMax = value._id
+	    				console.log(precisionMax)
+	    			}
+		    	})
+			})
+			db[DONNEE].remove(IDprecisionMax,function(){},function(){})
+		})
+	}
+
+	function removeASeriePerformanceBySize (size) {
+		db[DONNEE]._findFetch({},{}, function (res) {
+		    res.forEach(function (value) {
+				value.dataResults.forEach(function (results) {
+					if (results.taille == size) { 
+	    				console.log(results)
+						db[DONNEE].remove(value._id,function(){},function(){})
+		    		}
+		    	})
+			})
+		})
 	}
